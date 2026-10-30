@@ -1,0 +1,75 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	id 'maven-publish'
+}
+
+repositories {
+	// Loom 会自己加入 Minecraft / Mojang 库的仓库；
+	// 这里补 Fabric Maven 的国内镜像（官方地址在本机网络下会卡在 TLS 握手）。
+	maven {
+		name = 'FabricMirror'
+		url = 'https://repository.hanbings.io/proxy/'
+	}
+}
+
+loom {
+	// 把客户端代码拆到 src/client，避免专用服务端误加载客户端类
+	splitEnvironmentSourceSets()
+
+	mods {
+		"easytaskmgr" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	// Fabric API：HUD 渲染、按键、网络、生命周期事件都靠它
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+	def projectName = project.name
+	inputs.property "projectName", projectName
+
+	from("LICENSE") {
+		rename { "${it}_$projectName" }
+	}
+}
+
+publishing {
+	publications {
+		create("mavenJava", MavenPublication) {
+			from components.java
+		}
+	}
+
+	repositories {
+		// 需要发布到 Maven 仓库时在这里配置
+	}
+}

@@ -1,0 +1,16 @@
+pluginManagement {
+	repositories {
+		// 国内镜像：反向代理 maven.fabricmc.net。
+		// 本机直连 fabricmc.net 的 Cloudflare 节点时 TLS 握手会被网络中断
+		// （连接建立后卡住），所以这里不保留官方地址，只走镜像。
+		maven {
+			name = 'FabricMirror'
+			url = 'https://repository.hanbings.io/proxy/'
+		}
+		mavenCentral()
+		gradlePluginPortal()
+	}
+}
+
+// 与 fabric.mod.json 里的 mod id 保持一致
+rootProject.name = 'easytaskmgr'

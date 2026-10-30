@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"id": "easytaskmgr",
+	"version": "${version}",
+	"name": "EasyTaskMgr",
+	"description": "游戏内待办清单：快捷键快速记录、HUD 常驻、物品 / 成就 / 合成 / 坐标自动触发提醒，联机可与队友共享待办。",
+	"authors": [
+		"EasyTaskMgr"
+	],
+	"license": "CC0-1.0",
+	"icon": "assets/easytaskmgr/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.easytaskmgr.EasyTaskMgr"
+		],
+		"client": [
+			"com.easytaskmgr.client.EasyTaskMgrClient"
+		]
+	},
+	"mixins": [
+		"easytaskmgr.mixins.json",
+		{
+			"config": "easytaskmgr.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.20.1",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

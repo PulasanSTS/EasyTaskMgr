@@ -1,0 +1,8 @@
+{
+	"key.categories.easytaskmgr.keys": "EasyTaskMgr",
+	"key.easytaskmgr.quick_add": "快速添加待办",
+	"key.easytaskmgr.open_list": "打开待办列表",
+	"key.easytaskmgr.open_config": "待办设置",
+	"key.easytaskmgr.hud_interact": "HUD 交互（点击完成任务）",
+	"key.easytaskmgr.toggle_hud": "显示/隐藏待办 HUD"
+}
