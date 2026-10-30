@@ -1,14 +1,15 @@
 # EasyTaskMgr
 
-> 在 Minecraft 里「记性不好」的解药：按一下快捷键记下要做的事，右上角一直挂着；收集够了、成就到手、走到地方、到点了，它会主动提醒你。
+> 基于AI开发的待办清单Mod，在 Minecraft 里「记性不好」的解药：按一下快捷键记下要做的事，右上角一直挂着；收集够了、成就到手、走到地方、到点了，它会主动提醒你。
 
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.3-62b47a?style=flat-square)](https://www.minecraft.net/)
 [![Fabric](https://img.shields.io/badge/Fabric-0.20.1-dbb69c?style=flat-square)](https://fabricmc.net/)
 [![Java](https://img.shields.io/badge/Java-25-e76f00?style=flat-square)](https://adoptium.net/)
-[![License](https://img.shields.io/badge/License-CC0--1.0-lightgrey?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square)](LICENSE)
 
 ---
-
+## 开发AI
+Deepseek-V4.1-Flash 1017 (High)
 ## 它解决什么问题
 
 玩整合包 / 生电 / 联机时，经常出现这种情况：
@@ -64,7 +65,7 @@ EasyTaskMgr 把这些事变成游戏内的待办清单，并且**能在条件满
 
 1. 安装 **Minecraft 26.3** 对应的 **Fabric Loader**（≥ 0.20.1）；
 2. 把 [Fabric API](https://modrinth.com/mod/fabric-api)（26.3 版本）和 `easytaskmgr-x.y.z.jar` 一起放进 `.minecraft/mods`；
-3. 启动游戏，右上角出现「待办清单」即安装成功。
+3. 启动游戏即可使用。
 
 > 多人服务器：客户端装即可用大部分功能；**服务端也装**时，成就候选列表和队友待办共享才完整
 > （26.3 的服务端默认只把「有进度」的成就同步给客户端）。
@@ -208,18 +209,10 @@ src/client/java/com/easytaskmgr/client/
 - [ ] 收集任务支持「从零开始计数」模式
 - [ ] 成就前置条件展开成完整条件树
 
-## 发布到 GitHub
-
-从建仓库、上传源码到发 Release 的完整步骤（含协议选择、是否必须装 Git）见
-[docs/GITHUB.md](docs/GITHUB.md)。
-
-## 开发日志
-
-每一步改动、实现思路和踩坑记录见 [docs/DEVLOG.md](docs/DEVLOG.md)。
 
 ## 许可证
 
-[CC0-1.0](LICENSE) — 随便用、随便改，不需要署名。
+[MIT](LICENSE)
 
 ---
 
