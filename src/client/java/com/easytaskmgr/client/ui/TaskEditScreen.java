@@ -431,6 +431,9 @@ public class TaskEditScreen extends Screen {
 		}
 
 		graphics.text(font, I18n.t("edit.remind"), x0, rowRemind - 12, 0xFFB0BEC5);
+		if (!ClientShared.available()) {
+			graphics.text(font, I18n.t("share.noServer"), x0, rowButtons - 12, 0xFF9E9E9E);
+		}
 
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 

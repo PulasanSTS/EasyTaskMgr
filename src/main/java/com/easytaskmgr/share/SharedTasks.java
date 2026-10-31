@@ -36,11 +36,20 @@ public final class SharedTasks {
 		public final Set<UUID> claimed = new LinkedHashSet<>();
 		public boolean done;
 
+		boolean invited(String name) {
+			for (String value : invited) {
+				if (value.equalsIgnoreCase(name)) {
+					return true;
+				}
+			}
+			return false;
+		}
+
 		boolean visibleTo(ServerPlayer player) {
 			String name = player.getName().getString();
 			return visibility == 1
 					|| creator.equals(player.getUUID())
-					|| invited.contains(name)
+					|| invited(name)
 					|| claimed.contains(player.getUUID());
 		}
 	}
@@ -76,7 +85,7 @@ public final class SharedTasks {
 			return;
 		}
 		String name = player.getName().getString();
-		if (entry.visibility == 2 && !entry.invited.contains(name) && !entry.creator.equals(player.getUUID())) {
+		if (entry.visibility == 2 && !entry.invited(name) && !entry.creator.equals(player.getUUID())) {
 			return;
 		}
 		entry.claimed.add(player.getUUID());
@@ -126,7 +135,7 @@ public final class SharedTasks {
 			o.addProperty("mine", entry.creator.equals(player.getUUID()));
 			o.addProperty("canClaim", !entry.claimed.contains(player.getUUID())
 					&& !entry.creator.equals(player.getUUID())
-					&& (entry.visibility == 1 || entry.invited.contains(player.getName().getString())));
+					&& (entry.visibility == 1 || entry.invited(player.getName().getString())));
 			arr.add(o);
 		}
 		root.add("tasks", arr);
@@ -134,6 +143,7 @@ public final class SharedTasks {
 	}
 
 	public static void broadcast(MinecraftServer server) {
+		EasyTaskMgr.LOGGER.debug("广播共享任务：在线 {} 人", server.getPlayerList().getPlayers().size());
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 			if (ServerPlayNetworking.canSend(player, ShareSnapshotS2C.TYPE)) {
 				ServerPlayNetworking.send(player, new ShareSnapshotS2C(snapshot(player)));

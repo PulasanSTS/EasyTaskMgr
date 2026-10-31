@@ -72,6 +72,7 @@ public final class ClientShared {
 			EasyTaskMgr.LOGGER.warn("解析共享任务快照失败", e);
 		}
 		entries = parsed;
+		EasyTaskMgr.LOGGER.info("收到共享任务快照：{} 条", parsed.size());
 	}
 
 	private static void send(String action, String id, String json, String target) {
@@ -81,6 +82,7 @@ public final class ClientShared {
 	}
 
 	public static void publish(Task task) {
+		EasyTaskMgr.LOGGER.info("发布共享任务 {}（visibility={}）", task.id, task.visibility);
 		send("publish", task.id, GSON.toJson(task), "");
 	}
 

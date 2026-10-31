@@ -174,6 +174,7 @@ public final class I18n {
 		put("vis.special", "特殊共享", "Special");
 		put("share.published", "已发布共享任务", "Shared task published");
 		put("share.invited", "已邀请 %s 认领特殊共享任务", "Invited %s to your special tasks");
+		put("share.noServer", "服务端未安装本模组，共享功能不可用", "Server does not have the mod — sharing unavailable");
 		put("list.teammates", " · 队友 %d 条", " · %d from teammates");
 		put("list.donePrefix", "[已完成] ", "[Done] ");
 		put("list.footer", "%s 快速添加 · %s 列表 · %s 设置 · %s 隐藏 HUD",
