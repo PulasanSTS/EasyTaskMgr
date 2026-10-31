@@ -52,11 +52,6 @@ public final class ClientTasks {
 			return;
 		}
 		int count = countItem(mc, task.target);
-		if (task.includeContainers) {
-			scanOpenContainer(mc, task);
-			count += countInShulkers(mc, task.target);
-			count += Math.max(0, task.containerCount);
-		}
 		if (count != task.progress) {
 			task.progress = count;
 			TaskStore.get().markDirty();
@@ -66,42 +61,6 @@ public final class ClientTasks {
 		}
 	}
 
-	/** 记下打开过的容器里目标物品的数量（取见过的最大值）。 */
-	private static void scanOpenContainer(Minecraft mc, Task task) {
-		if (!(mc.gui.screen() instanceof AbstractContainerScreen<?> screen) || mc.player == null) {
-			return;
-		}
-		var menu = screen.getMenu();
-		if (menu == mc.player.inventoryMenu) {
-			return;
-		}
-		int found = countInMenu(menu, task.target);
-		if (found > task.containerCount) {
-			task.containerCount = found;
-			TaskStore.get().markDirty();
-		}
-	}
-
-	private static int countInMenu(net.minecraft.world.inventory.AbstractContainerMenu menu, String itemId) {
-		Identifier id = Identifier.tryParse(itemId);
-		if (id == null) {
-			return 0;
-		}
-		Item item = BuiltInRegistries.ITEM.getValue(id);
-		if (item == null || item == Items.AIR) {
-			return 0;
-		}
-		int total = 0;
-		for (var slot : menu.slots) {
-			ItemStack stack = slot.getItem();
-			if (!stack.isEmpty() && stack.is(item)) {
-				total += stack.getCount();
-			}
-		}
-		return total;
-	}
-
-	/** 背包里潜影盒内部的物品：读 {@code DataComponents.CONTAINER} 组件。 */
 	private static int countInShulkers(Minecraft mc, String itemId) {
 		if (mc.player == null) {
 			return 0;
@@ -201,16 +160,28 @@ public final class ClientTasks {
 			return;
 		}
 		long total = mc.level.getOverworldClockTime();
-		long day = total / 24000L;
-		long dayTime = total % 24000L;
+		int period = Math.max(2000, com.easytaskmgr.config.ModConfig.get().ticksPerDay);
+		long day = total / period;
+		long dayTime = total % period;
+		long previous = task.lastClockTime;
+		task.lastClockTime = total;
+		if (previous < 0 || total < previous) {
+			return;
+		}
+		long prevDayTime = previous % period;
 		if (task.lastGameDay >= day) {
 			return;
 		}
 		if (day % Math.max(1, task.gameDayInterval) != 0) {
 			return;
 		}
-		long target = ((long) ((task.gameHour - 6 + 24) % 24)) * 1000L + (long) task.gameMinute * 1000L / 60L;
-		if (dayTime >= target && dayTime < target + 40) {
+		long target = ((long) ((task.gameHour - 6 + 24) % 24)) * period / 24L
+				+ (long) task.gameMinute * period / 1440L;
+		// 跨点检测：本次检查跨过 target 就触发，rate 再快也不会跳过整个窗口
+		boolean crossed = dayTime >= prevDayTime
+				? (prevDayTime < target && target <= dayTime)
+				: (target > prevDayTime || target <= dayTime);
+		if (crossed) {
 			task.lastGameDay = day;
 			TaskStore.get().markDirty();
 			String notice = I18n.t("notify.reminder", task.displayText());

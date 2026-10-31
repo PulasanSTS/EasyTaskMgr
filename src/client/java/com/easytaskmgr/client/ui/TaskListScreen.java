@@ -1,6 +1,7 @@
 package com.easytaskmgr.client.ui;
 
 import com.easytaskmgr.client.ClientNet;
+import com.easytaskmgr.client.ClientShared;
 import com.easytaskmgr.client.ClientTasks;
 import com.easytaskmgr.client.Keybinds;
 import com.easytaskmgr.client.TextWrap;
@@ -144,7 +145,7 @@ public class TaskListScreen extends Screen {
 		int end = Math.min(total, scrollOffset + visibleRows);
 		String info = I18n.t("list.range", total == 0 ? 0 : scrollOffset + 1, end, total)
 				+ (maxOffset(total) > 0 ? " · " + I18n.t("list.scrollHint") : "")
-				+ (ClientNet.remoteCount() > 0 ? I18n.t("list.teammates", ClientNet.remoteCount()) : "");
+				+ (ClientShared.entries().isEmpty() ? "" : I18n.t("list.sharedCount", ClientShared.entries().size()));
 		graphics.centeredText(font, Component.literal(info), cx, 40, 0xFF9E9E9E);
 
 		for (int i = 0; i < visibleRows; i++) {
@@ -154,7 +155,8 @@ public class TaskListScreen extends Screen {
 			}
 			Task task = tasks.get(index);
 			int y = LIST_TOP + i * ROW_HEIGHT;
-			int color = task.done ? 0xFF757575 : task.priority().color();
+			boolean isShared = ClientShared.find(task.id) != null;
+			int color = task.done ? 0xFF757575 : isShared ? 0xFF64B5F6 : task.priority().color();
 			String prefix = task.done ? I18n.t("list.donePrefix") : "[" + task.priority().label() + "] ";
 			List<String> lines = TextWrap.wrap(font, prefix + task.displayText(), TEXT_WIDTH);
 			int shown = Math.min(2, lines.size());

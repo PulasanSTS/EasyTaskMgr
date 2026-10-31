@@ -1,12 +1,14 @@
 package com.easytaskmgr;
 
 import com.easytaskmgr.advancement.AdvancementDescriber;
+import com.easytaskmgr.net.ShareActionC2S;
+import com.easytaskmgr.net.ShareSnapshotS2C;
+import com.easytaskmgr.share.SharedTasks;
+import com.easytaskmgr.task.Task;
 import com.easytaskmgr.net.AdvancementDataS2C;
 import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.net.AdvancementQueryC2S;
 
-import com.easytaskmgr.net.ShareTasksC2S;
-import com.easytaskmgr.net.SharedTasksS2C;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -38,8 +40,6 @@ public class EasyTaskMgr implements ModInitializer {
 	public static final String MOD_ID = "easytaskmgr";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	/** 服务端缓存：玩家 UUID -> 该玩家共享的任务包。 */
-	private static final Map<UUID, SharedTasksS2C> SHARED_CACHE = new ConcurrentHashMap<>();
 	private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
 
 	public static Identifier id(String path) {
@@ -48,47 +48,44 @@ public class EasyTaskMgr implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		PayloadTypeRegistry.serverboundPlay().register(ShareTasksC2S.TYPE, ShareTasksC2S.CODEC);
-		PayloadTypeRegistry.clientboundPlay().register(SharedTasksS2C.TYPE, SharedTasksS2C.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(ShareActionC2S.TYPE, ShareActionC2S.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(ShareSnapshotS2C.TYPE, ShareSnapshotS2C.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(AdvancementQueryC2S.TYPE, AdvancementQueryC2S.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(AdvancementDataS2C.TYPE, AdvancementDataS2C.CODEC);
 
-		ServerPlayNetworking.registerGlobalReceiver(ShareTasksC2S.TYPE, (payload, context) -> {
+		ServerPlayNetworking.registerGlobalReceiver(ShareActionC2S.TYPE, (payload, context) -> {
 			var player = context.player();
-			String owner = player.getName().getString();
-			SharedTasksS2C out = new SharedTasksS2C(owner, payload.json());
-			SHARED_CACHE.put(player.getUUID(), out);
-			LOGGER.info("收到 {} 的共享待办（{} 字节），转发给 {} 名队友", owner, payload.json().length(), context.server().getPlayerList().getPlayers().size() - 1);
-
-			for (var other : context.server().getPlayerList().getPlayers()) {
-				if (!other.getUUID().equals(player.getUUID())) {
-					ServerPlayNetworking.send(other, out);
+			var server = context.server();
+			server.execute(() -> {
+				switch (payload.action()) {
+					case "publish" -> {
+						Task task = null;
+						try {
+							task = GSON.fromJson(payload.json(), Task.class);
+						} catch (Exception e) {
+							LOGGER.warn("解析共享任务失败", e);
+						}
+						if (task != null) {
+							task.normalize();
+							SharedTasks.publish(player, task);
+						}
+					}
+					case "claim" -> SharedTasks.claim(player, payload.id());
+					case "invite" -> SharedTasks.invite(player, payload.id(), payload.target());
+					case "complete" -> SharedTasks.complete(player, payload.id());
+					case "revoke" -> SharedTasks.revoke(player, payload.id());
+					default -> {
+					}
 				}
-			}
+				SharedTasks.broadcast(server);
+			});
 		});
 
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-			UUID joiner = handler.player.getUUID();
-			for (Map.Entry<UUID, SharedTasksS2C> entry : SHARED_CACHE.entrySet()) {
-				if (!entry.getKey().equals(joiner)) {
-					ServerPlayNetworking.send(handler.player, entry.getValue());
-				}
+			if (ServerPlayNetworking.canSend(handler.player, ShareSnapshotS2C.TYPE)) {
+				ServerPlayNetworking.send(handler.player, new ShareSnapshotS2C(SharedTasks.snapshot(handler.player)));
 			}
 		});
-
-		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-			// 断线后广播一份空列表，让队友的 HUD 立刻清掉这个人的待办。
-			UUID left = handler.player.getUUID();
-			SharedTasksS2C cached = SHARED_CACHE.remove(left);
-			if (cached == null) {
-				return;
-			}
-			SharedTasksS2C empty = new SharedTasksS2C(cached.owner(), "[]");
-			for (var other : server.getPlayerList().getPlayers()) {
-				ServerPlayNetworking.send(other, empty);
-			}
-		});
-
 		ServerPlayNetworking.registerGlobalReceiver(AdvancementQueryC2S.TYPE, (payload, context) -> {
 			var manager = context.server().getAdvancements();
 			I18n.Lang lang = I18n.Lang.byCode(payload.lang());

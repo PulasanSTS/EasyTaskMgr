@@ -84,9 +84,16 @@ public final class TaskHud implements HudElement {
 		}
 
 		List<Task> active = TaskStore.get().active();
-		List<Task> remote = cfg.showTeammates ? ClientNet.remoteAll() : List.of();
+		List<ClientShared.Entry> shared = cfg.showTeammates ? ClientShared.entries() : List.of();
 		String flash = ClientTasks.flashText();
-		if (active.isEmpty() && remote.isEmpty() && flash == null && !interactive) {
+		boolean hasShared = false;
+		for (ClientShared.Entry entry : shared) {
+			if (!entry.done()) {
+				hasShared = true;
+				break;
+			}
+		}
+		if (active.isEmpty() && !hasShared && flash == null && !interactive) {
 			return;
 		}
 
@@ -116,11 +123,16 @@ public final class TaskHud implements HudElement {
 		if (active.size() > shown) {
 			rows.add(new Row(I18n.t("hud.more", active.size() - shown), 0xFF90A4AE, null));
 		}
-		if (!remote.isEmpty()) {
-			rows.add(new Row(I18n.t("hud.teammates"), 0xFF80CBC4, null));
-			for (Task task : remote) {
-				for (String line : TextWrap.wrap(font, task.owner + " · " + task.displayText() + suffix(task), maxWidth)) {
-					rows.add(new Row(line, 0xFFB0BEC5, null));
+		if (!shared.isEmpty()) {
+			for (ClientShared.Entry entry : shared) {
+				if (entry.done()) {
+					continue;
+				}
+				String tag = entry.mine() ? I18n.t("share.tagMine")
+						: entry.claimed() ? I18n.t("share.tagClaimed")
+						: entry.canClaim() ? I18n.t("share.tagClaim") : I18n.t("share.tagLocked");
+				for (String line : TextWrap.wrap(font, entry.owner() + " · " + entry.task().displayText() + " " + tag, maxWidth)) {
+					rows.add(new Row(line, 0xFF64B5F6, null));
 				}
 			}
 		}
@@ -189,10 +201,10 @@ public final class TaskHud implements HudElement {
 	public static String detail(Minecraft mc, Task task) {
 		ModConfig cfg = ModConfig.get();
 		return switch (task.type) {
-			case COLLECT -> task.progressText() + (task.includeContainers ? I18n.t("hud.containers") : "");
+			case COLLECT -> task.progressText();
 			case ADVANCEMENT -> {
 				String base = I18n.t("hud.advancement", shortId(task.target));
-				String req = (cfg.advancementRequirements && task.showRequirements) ? AdvancementInfo.summary(mc, task.target) : null;
+				String req = null;
 				yield req == null || req.isBlank() ? base : base + I18n.t("hud.need", req);
 			}
 			case TIMER -> task.progressText() + (task.remindText.isBlank() ? "" : " · " + task.remindText);

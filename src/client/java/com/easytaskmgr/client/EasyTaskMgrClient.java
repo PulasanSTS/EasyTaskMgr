@@ -4,6 +4,9 @@ import com.easytaskmgr.EasyTaskMgr;
 import com.easytaskmgr.config.ModConfig;
 import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.task.TaskStore;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import com.easytaskmgr.client.ui.ConfigScreen;
 import com.easytaskmgr.client.ui.QuickAddScreen;
 import com.easytaskmgr.client.ui.TaskListScreen;
@@ -28,6 +31,7 @@ public class EasyTaskMgrClient implements ClientModInitializer {
 		TaskStore.get().load();
 		Keybinds.register();
 		ClientNet.register();
+		registerCommands();
 		AdvancementCatalog.register();
 
 		HudElementRegistry.addLast(TaskHud.ID, new TaskHud());
@@ -49,6 +53,21 @@ public class EasyTaskMgrClient implements ClientModInitializer {
 		EasyTaskMgr.LOGGER.info("EasyTaskMgr 客户端初始化完成");
 	}
 
+	private static void registerCommands() {
+		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registry) ->
+				dispatcher.register(ClientCommands.literal("etm")
+						.then(ClientCommands.literal("invite")
+								.then(ClientCommands.argument("player", StringArgumentType.word()).executes(ctx -> {
+									String name = StringArgumentType.getString(ctx, "player");
+									for (ClientShared.Entry entry : ClientShared.entries()) {
+										if (entry.mine() && entry.visibility() == 2) {
+											ClientShared.invite(entry.id(), name);
+										}
+									}
+									Notifier.info(I18n.t("share.invited", name));
+									return 1;
+								})))));
+	}
 	private void onTick(Minecraft mc) {
 		while (Keybinds.QUICK_ADD.consumeClick()) {
 			if (mc.gui.screen() == null) {

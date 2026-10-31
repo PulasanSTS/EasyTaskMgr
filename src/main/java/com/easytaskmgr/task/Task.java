@@ -42,6 +42,8 @@ public class Task {
 	public int gameDayInterval = 1;
 	/** 上一次触发游戏时间提醒的游戏日，避免同一天重复触发。 */
 	public long lastGameDay = -1L;
+	/** 上一次检查时的世界时钟 tick（用于跨点检测，避免 rate 过快时跳过触发窗口）。 */
+	public long lastClockTime = -1L;
 
 	/** 触发时额外提示的文案，可为空。 */
 	public String remindText = "";
@@ -54,15 +56,20 @@ public class Task {
 	public long nextTriggerAt;
 
 	/** 收集任务：是否把打开过的容器（箱子 / 末影箱 / 潜影盒）里的物品也算进去。 */
-	public boolean includeContainers;
 	/** 收集任务：已扫描到的容器内数量（取见过的最大值）。 */
-	public int containerCount;
 
 	/** 成就任务：是否在编辑界面显示前置条件与达成方式。 */
-	public boolean showRequirements;
 
 	/** 多人共享：任务拥有者名字（自己为空）。 */
 	public String owner = "";
+	/** 0 = 仅个人，1 = 共享，2 = 特殊共享（需邀请）。 */
+	public int visibility;
+	/** 客户端展示用：共享任务的服务端信息（不写入存档）。 */
+	public transient String shareOwnerName = "";
+	public transient boolean shareClaimed;
+	public transient boolean shareCanClaim;
+	public transient boolean shareMine;
+	public transient boolean shareDone;
 	/** 是否参与多人共享。 */
 	public boolean shared = true;
 	/** 是否为别人同步过来的只读任务。 */
@@ -131,7 +138,6 @@ public class Task {
 		t.triggered = triggered;
 		t.createdAt = createdAt;
 		t.completedAt = completedAt;
-		t.includeContainers = includeContainers;
 		return t;
 	}
 
@@ -155,6 +161,9 @@ public class Task {
 		if (owner == null) {
 			owner = "";
 		}
+		if (visibility < 0 || visibility > 2) {
+			visibility = 0;
+		}
 		if (targetCount < 1) {
 			targetCount = 1;
 		}
@@ -163,9 +172,6 @@ public class Task {
 		}
 		if (radius < 1) {
 			radius = 8;
-		}
-		if (containerCount < 0) {
-			containerCount = 0;
 		}
 		gameHour = Math.max(0, Math.min(23, gameHour));
 		gameMinute = Math.max(0, Math.min(59, gameMinute));

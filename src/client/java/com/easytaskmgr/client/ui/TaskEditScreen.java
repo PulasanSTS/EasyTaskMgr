@@ -2,6 +2,7 @@ package com.easytaskmgr.client.ui;
 
 import com.easytaskmgr.client.AdvancementInfo;
 import com.easytaskmgr.client.ClientNet;
+import com.easytaskmgr.client.ClientShared;
 import com.easytaskmgr.client.ClientTasks;
 import com.easytaskmgr.client.Suggestions;
 import com.easytaskmgr.client.TextWrap;
@@ -105,12 +106,6 @@ public class TaskEditScreen extends Screen {
 				countBox.setValue(Integer.toString(task.targetCount));
 				countBox.setHint(Component.literal(I18n.t("edit.count")));
 
-				if (task.type == TaskType.COLLECT) {
-					addRenderableWidget(Button.builder(containerLabel(), b -> {
-						task.includeContainers = !task.includeContainers;
-						b.setMessage(containerLabel());
-					}).bounds(x0, rowExtra, 170, 18).build());
-				}
 			}
 			case ADVANCEMENT -> {
 				targetBox = addRenderableWidget(new EditBox(font, x0, rowTarget, CONTENT_WIDTH, 18, Component.literal(I18n.t("edit.advPlaceholder"))));
@@ -119,13 +114,6 @@ public class TaskEditScreen extends Screen {
 				targetBox.setHint(Component.literal(I18n.t("edit.advPlaceholder")));
 				targetBox.setResponder(s -> refreshSuggestions(s, true));
 
-				if (com.easytaskmgr.config.ModConfig.get().advancementRequirements) {
-					addRenderableWidget(Button.builder(requirementsLabel(), b -> {
-						captureFields();
-						task.showRequirements = !task.showRequirements;
-						rebuildWidgets();
-					}).bounds(x0, rowExtra, 170, 18).build());
-				}
 			}
 			case COORDINATE -> {
 				// x/y/z 各 70 宽，半径单独放在最右侧 68 宽，避免 z 输入框盖住半径
@@ -182,14 +170,18 @@ public class TaskEditScreen extends Screen {
 			}
 		}
 
+		if (ClientShared.available()) {
+			addRenderableWidget(Button.builder(visibilityLabel(), b -> {
+				captureFields();
+				task.visibility = (task.visibility + 1) % 3;
+				b.setMessage(visibilityLabel());
+			}).bounds(x0, rowExtra, 170, 18).build());
+		}
+
 		remindBox = addRenderableWidget(new EditBox(font, x0, rowRemind, CONTENT_WIDTH, 18, Component.literal(I18n.t("edit.remind"))));
 		remindBox.setMaxLength(120);
 		remindBox.setValue(task.remindText);
 		remindBox.setHint(Component.literal(I18n.t("edit.remindHint")));
-		if (com.easytaskmgr.config.ModConfig.get().advancementRequirements
-				&& task.type == TaskType.ADVANCEMENT && task.showRequirements) {
-			remindBox.visible = false;
-		}
 
 		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.save")), b -> save())
 				.bounds(width / 2 - 100, rowButtons, 96, 20).build());
@@ -210,6 +202,14 @@ public class TaskEditScreen extends Screen {
 		rowButtons = Math.min(height - 26, 190);
 	}
 
+	private Component visibilityLabel() {
+		String name = switch (task.visibility) {
+			case 1 -> I18n.t("vis.shared");
+			case 2 -> I18n.t("vis.special");
+			default -> I18n.t("vis.personal");
+		};
+		return Component.literal(I18n.t("edit.visibility", name));
+	}
 	private Component timerHint() {
 		return switch (task.timerMode) {
 			case INTERVAL -> Component.literal(I18n.t("edit.timerHint") + I18n.t("edit.intervalHint"));
@@ -220,14 +220,6 @@ public class TaskEditScreen extends Screen {
 
 	private static String fmt(double v) {
 		return String.format("%.1f", v);
-	}
-
-	private Component containerLabel() {
-		return Component.literal(I18n.t("edit.container", I18n.t(task.includeContainers ? "ui.on" : "ui.off")));
-	}
-
-	private Component requirementsLabel() {
-		return Component.literal(I18n.t("edit.requirements", I18n.t(task.showRequirements ? "ui.on" : "ui.off")));
 	}
 
 	private void refreshSuggestions(String text, boolean advancement) {
@@ -438,13 +430,7 @@ public class TaskEditScreen extends Screen {
 			case NORMAL -> graphics.text(font, I18n.t("edit.normalHint"), x0, rowTarget - 12, 0xFF80CBC4);
 		}
 
-		boolean showRequirements = com.easytaskmgr.config.ModConfig.get().advancementRequirements
-				&& task.type == TaskType.ADVANCEMENT && task.showRequirements;
-		if (!showRequirements) {
-			graphics.text(font, I18n.t("edit.remind"), x0, rowRemind - 12, 0xFFB0BEC5);
-		} else {
-			drawRequirements(graphics, x0);
-		}
+		graphics.text(font, I18n.t("edit.remind"), x0, rowRemind - 12, 0xFFB0BEC5);
 
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 

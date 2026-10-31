@@ -161,6 +161,19 @@ public final class I18n {
 		put("list.range", "%d-%d / 共 %d 条", "%d-%d of %d");
 		put("list.scrollHint", "滚轮滚动", "scroll with wheel");
 		put("list.empty", "还没有待办", "No tasks yet");
+		put("list.sharedCount", " · 共享 %d", " · shared %d");
+		put("share.tagMine", "[我的共享]", "[mine]");
+		put("share.tagClaimed", "[已认领]", "[claimed]");
+		put("share.tagClaim", "[可认领]", "[claimable]");
+		put("share.tagLocked", "[未受邀]", "[locked]");
+		put("share.claimedToast", "已认领：%s", "Claimed: %s");
+		put("share.completedToast", "共享任务已完成：%s", "Shared task completed: %s");
+		put("edit.visibility", "可见性：%s", "Visibility: %s");
+		put("vis.personal", "仅个人", "Personal");
+		put("vis.shared", "共享", "Shared");
+		put("vis.special", "特殊共享", "Special");
+		put("share.published", "已发布共享任务", "Shared task published");
+		put("share.invited", "已邀请 %s 认领特殊共享任务", "Invited %s to your special tasks");
 		put("list.teammates", " · 队友 %d 条", " · %d from teammates");
 		put("list.donePrefix", "[已完成] ", "[Done] ");
 		put("list.footer", "%s 快速添加 · %s 列表 · %s 设置 · %s 隐藏 HUD",

@@ -40,6 +40,8 @@ public final class ModConfig {
 	public boolean advancementRequirements = false;
 	/** HUD 交互模式是否开启（开启后鼠标释放，点击普通任务可完成）。 */
 	public boolean hudInteractive = false;
+	/** 一个游戏日多少 tick（整合包改过昼夜周期时调整，默认 24000）。 */
+	public int ticksPerDay = 24000;
 	/** 语言：auto（跟随 Minecraft）/ zh_cn / en_us。 */
 	public String language = "auto";
 	/** 完成 / 提醒时是否播放音效。 */
@@ -95,6 +97,7 @@ public final class ModConfig {
 		showDirectionArrow = o.showDirectionArrow;
 		advancementRequirements = o.advancementRequirements;
 		hudInteractive = o.hudInteractive;
+		ticksPerDay = o.ticksPerDay >= 2000 ? o.ticksPerDay : 24000;
 		language = (o.language != null && (o.language.equals("zh_cn") || o.language.equals("en_us"))) ? o.language : "auto";
 		soundEnabled = o.soundEnabled;
 		shareEnabled = o.shareEnabled;
