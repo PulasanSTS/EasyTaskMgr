@@ -7,6 +7,23 @@
 
 ---
 
+## 2026-10-31 · 第九轮：许可证改为 MIT
+
+### 1. 11:20 修改：CC0-1.0 → MIT
+
+- **原因**：MIT 是模组圈最常见的宽松协议——保留版权与许可声明即可自由使用、修改、分发，
+  比 CC0 更符合“开源项目”的预期，也便于别人引用。
+- **改动**：
+  - `LICENSE` 全文替换为 MIT，版权行 `Copyright (c) 2026 PulasanSTS`；
+  - `src/main/resources/fabric.mod.json` 的 `license` 改为 `"MIT"`（会打进 jar）；
+  - `README.md` 徽章改为 MIT、许可证段落改为 MIT 说明；
+  - `docs/GITHUB.md` 里“当前协议”的描述同步更新。
+- **注意**：已经发布的 `v1.0.0-beta.2` Release 是用 CC0 版本构建的（CC0 不可撤销），
+  MIT 从本提交起对后续代码生效；如需让发布附件也带 MIT，需要重新构建并换附件（或发下一个版本）。
+- **文件**：`LICENSE`、`src/main/resources/fabric.mod.json`、`README.md`、`docs/GITHUB.md`。
+
+---
+
 ## 2026-10-31 · 第八轮：移除合成任务 + 列表滚动（仍为 beta.2）
 
 ### 1. 10:30 移除：合成任务功能

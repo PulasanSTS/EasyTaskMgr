@@ -7,7 +7,7 @@
 	"authors": [
 		"EasyTaskMgr"
 	],
-	"license": "CC0-1.0",
+	"license": "MIT",
 	"icon": "assets/easytaskmgr/icon.png",
 	"environment": "*",
 	"entrypoints": {

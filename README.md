@@ -5,7 +5,7 @@
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.3-62b47a?style=flat-square)](https://www.minecraft.net/)
 [![Fabric](https://img.shields.io/badge/Fabric-0.20.1-dbb69c?style=flat-square)](https://fabricmc.net/)
 [![Java](https://img.shields.io/badge/Java-25-e76f00?style=flat-square)](https://adoptium.net/)
-[![License](https://img.shields.io/badge/License-CC0--1.0-lightgrey?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 ---
 
@@ -227,7 +227,7 @@ src/client/java/com/easytaskmgr/client/
 
 ## 许可证
 
-[CC0-1.0](LICENSE) — 随便用、随便改，不需要署名。
+[MIT](LICENSE) — 可自由使用、修改、分发，保留版权与许可声明即可。
 
 ---
 

@@ -17,7 +17,7 @@
 | 文件 | 作用 |
 | --- | --- |
 | `README.md` | 仓库首页说明（功能、安装、用法、构建） |
-| `LICENSE` | 许可证（当前 CC0-1.0） |
+| `LICENSE` | 许可证（当前 MIT） |
 | `.gitignore` | 已经排除了 `build/`、`run/`、`.gradle/`、日志等 |
 | `.github/workflows/build.yml` | 推上去后 GitHub 自动编译，产出 jar |
 | `docs/DEVLOG.md` | 开发日志 |
@@ -135,7 +135,7 @@ git push -u origin main
 
 ## 开源协议怎么选
 
-当前仓库用的是 **CC0-1.0**（Fabric 官方模板默认，等于“放弃版权，随便用”）。常见选择对比：
+当前仓库用的是 **MIT**（最宽松、最省心的常见选择）。常见协议对比：
 
 | 协议 | 特点 | 适合 |
 | --- | --- | --- |
@@ -147,7 +147,7 @@ git push -u origin main
 **换协议只要三步**：
 
 1. 用新协议全文替换 `LICENSE` 文件（从 https://choosealicense.com/ 复制）；
-2. 改 `src/main/resources/fabric.mod.json` 里的 `"license": "CC0-1.0"` → 例如 `"MIT"`；
+2. 改 `src/main/resources/fabric.mod.json` 里的 `"license"` 字段（当前为 `"MIT"`）；
 3. README 里的 License 段落同步改一下。
 
 > 注意：协议一旦发布就很难收回，选之前想清楚；模组代码里如果引用了别人的 GPL 代码，就不能只用 MIT。
