@@ -5,9 +5,11 @@ import com.easytaskmgr.client.ClientNet;
 import com.easytaskmgr.client.ClientTasks;
 import com.easytaskmgr.client.Suggestions;
 import com.easytaskmgr.client.TextWrap;
+import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.task.Task;
 import com.easytaskmgr.task.TaskStore;
 import com.easytaskmgr.task.TaskType;
+import com.easytaskmgr.task.TimerMode;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -41,6 +43,9 @@ public class TaskEditScreen extends Screen {
 	private EditBox yBox;
 	private EditBox zBox;
 	private EditBox intervalBox;
+	private EditBox hourBox;
+	private EditBox minuteBox;
+	private EditBox daysBox;
 	private EditBox remindBox;
 
 	private final List<Suggestions.Entry> suggestions = new ArrayList<>();
@@ -58,7 +63,7 @@ public class TaskEditScreen extends Screen {
 	private int rowButtons;
 
 	public TaskEditScreen(Task task, boolean creating, Screen parent) {
-		super(Component.literal(creating ? "新建待办" : "编辑待办"));
+		super(Component.literal(creating ? I18n.t("edit.new") : I18n.t("edit.edit")));
 		this.task = task;
 		this.creating = creating;
 		this.parent = parent;
@@ -72,44 +77,46 @@ public class TaskEditScreen extends Screen {
 		layout();
 		int x0 = width / 2 - CONTENT_WIDTH / 2;
 
-		textBox = addRenderableWidget(new EditBox(font, x0, rowType - 18, CONTENT_WIDTH, 18, Component.literal("内容")));
+		textBox = addRenderableWidget(new EditBox(font, x0, rowType - 18, CONTENT_WIDTH, 18, Component.literal(I18n.t("edit.content"))));
 		textBox.setMaxLength(120);
 		textBox.setValue(task.text);
 
-		addRenderableWidget(Button.builder(Component.literal("类型：" + task.type.label()), b -> {
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.type", task.type.label())), b -> {
 			captureFields();
 			task.type = task.type.next();
 			rebuildWidgets();
 		}).bounds(x0, rowType, 140, 18).build());
 
-		addRenderableWidget(Button.builder(Component.literal("优先级：" + task.priority().label()), b -> {
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.priority", task.priority().label())), b -> {
 			task.setPriority(task.priority().next());
-			b.setMessage(Component.literal("优先级：" + task.priority().label()));
+			b.setMessage(Component.literal(I18n.t("ui.priority", task.priority().label())));
 		}).bounds(x0 + 148, rowType, 140, 18).build());
 
 		switch (task.type) {
-			case COLLECT, CRAFT -> {
-				targetBox = addRenderableWidget(new EditBox(font, x0, rowTarget, CONTENT_WIDTH - 70, 18, Component.literal("物品名")));
+			case COLLECT -> {
+				targetBox = addRenderableWidget(new EditBox(font, x0, rowTarget, CONTENT_WIDTH - 70, 18, Component.literal(I18n.t("edit.itemPlaceholder"))));
 				targetBox.setMaxLength(120);
 				targetBox.setValue(task.target.isEmpty() ? "" : Suggestions.nameOfItem(task.target));
-				targetBox.setHint(Component.literal("物品名，如 钻石"));
+				targetBox.setHint(Component.literal(I18n.t("edit.itemPlaceholder")));
 				targetBox.setResponder(s -> refreshSuggestions(s, false));
 
-				countBox = addRenderableWidget(new EditBox(font, x0 + CONTENT_WIDTH - 62, rowTarget, 62, 18, Component.literal("数量")));
+				countBox = addRenderableWidget(new EditBox(font, x0 + CONTENT_WIDTH - 62, rowTarget, 62, 18, Component.literal(I18n.t("edit.count"))));
 				countBox.setMaxLength(6);
 				countBox.setValue(Integer.toString(task.targetCount));
-				countBox.setHint(Component.literal("数量"));
+				countBox.setHint(Component.literal(I18n.t("edit.count")));
 
-				addRenderableWidget(Button.builder(containerLabel(), b -> {
-					task.includeContainers = !task.includeContainers;
-					b.setMessage(containerLabel());
-				}).bounds(x0, rowExtra, 170, 18).build());
+				if (task.type == TaskType.COLLECT) {
+					addRenderableWidget(Button.builder(containerLabel(), b -> {
+						task.includeContainers = !task.includeContainers;
+						b.setMessage(containerLabel());
+					}).bounds(x0, rowExtra, 170, 18).build());
+				}
 			}
 			case ADVANCEMENT -> {
-				targetBox = addRenderableWidget(new EditBox(font, x0, rowTarget, CONTENT_WIDTH, 18, Component.literal("成就名")));
+				targetBox = addRenderableWidget(new EditBox(font, x0, rowTarget, CONTENT_WIDTH, 18, Component.literal(I18n.t("edit.advPlaceholder"))));
 				targetBox.setMaxLength(160);
 				targetBox.setValue(task.target.isEmpty() ? "" : Suggestions.nameOfAdvancement(minecraft, task.target));
-				targetBox.setHint(Component.literal("成就名，如 来硬的"));
+				targetBox.setHint(Component.literal(I18n.t("edit.advPlaceholder")));
 				targetBox.setResponder(s -> refreshSuggestions(s, true));
 
 				if (com.easytaskmgr.config.ModConfig.get().advancementRequirements) {
@@ -133,37 +140,60 @@ public class TaskEditScreen extends Screen {
 				zBox.setValue(fmt(task.z));
 				zBox.setHint(Component.literal("z"));
 
-				countBox = addRenderableWidget(new EditBox(font, x0 + CONTENT_WIDTH - 68, rowTarget, 68, 18, Component.literal("半径")));
+				countBox = addRenderableWidget(new EditBox(font, x0 + CONTENT_WIDTH - 68, rowTarget, 68, 18, Component.literal(I18n.t("edit.radius"))));
 				countBox.setValue(Integer.toString(task.radius));
-				countBox.setHint(Component.literal("半径"));
+				countBox.setHint(Component.literal(I18n.t("edit.radius")));
 			}
 			case TIMER -> {
-				addRenderableWidget(Button.builder(Component.literal("提醒：" + task.timerMode.label()), b -> {
+				addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.timer", task.timerMode.label())), b -> {
 					captureFields();
 					task.timerMode = task.timerMode.next();
-					b.setMessage(Component.literal("提醒：" + task.timerMode.label()));
+					rebuildWidgets();
 				}).bounds(x0, rowTarget, 170, 18).build());
 
-				intervalBox = addRenderableWidget(new EditBox(font, x0 + 178, rowTarget, 62, 18, Component.literal("分钟")));
-				intervalBox.setValue(Integer.toString(task.intervalMinutes));
-				intervalBox.setHint(Component.literal("分钟"));
+				if (task.timerMode == TimerMode.INTERVAL) {
+					intervalBox = addRenderableWidget(new EditBox(font, x0 + 178, rowTarget, 62, 18, Component.literal(I18n.t("edit.minutes"))));
+					intervalBox.setValue(Integer.toString(task.intervalMinutes));
+					intervalBox.setHint(Component.literal(I18n.t("edit.minutes")));
+				} else if (task.timerMode == TimerMode.GAME_TIME) {
+					hourBox = addRenderableWidget(new EditBox(font, x0, rowExtra, 44, 18, Component.literal(I18n.t("edit.hour"))));
+					hourBox.setValue(Integer.toString(task.gameHour));
+					hourBox.setHint(Component.literal(I18n.t("edit.hour")));
+					minuteBox = addRenderableWidget(new EditBox(font, x0 + 50, rowExtra, 44, 18, Component.literal(I18n.t("edit.minute"))));
+					minuteBox.setValue(Integer.toString(task.gameMinute));
+					minuteBox.setHint(Component.literal(I18n.t("edit.minute")));
+					daysBox = addRenderableWidget(new EditBox(font, x0 + 100, rowExtra, 44, 18, Component.literal(I18n.t("edit.days"))));
+					daysBox.setValue(Integer.toString(task.gameDayInterval));
+					daysBox.setHint(Component.literal(I18n.t("edit.days")));
+
+					addRenderableWidget(Button.builder(Component.literal(I18n.t("edit.presetDay")), b -> {
+						task.gameHour = 6;
+						task.gameMinute = 0;
+						rebuildWidgets();
+					}).bounds(x0 + 154, rowExtra, 74, 18).build());
+					addRenderableWidget(Button.builder(Component.literal(I18n.t("edit.presetNight")), b -> {
+						task.gameHour = 19;
+						task.gameMinute = 0;
+						rebuildWidgets();
+					}).bounds(x0 + 232, rowExtra, 74, 18).build());
+				}
 			}
 			case NORMAL -> {
 			}
 		}
 
-		remindBox = addRenderableWidget(new EditBox(font, x0, rowRemind, CONTENT_WIDTH, 18, Component.literal("附加提醒")));
+		remindBox = addRenderableWidget(new EditBox(font, x0, rowRemind, CONTENT_WIDTH, 18, Component.literal(I18n.t("edit.remind"))));
 		remindBox.setMaxLength(120);
 		remindBox.setValue(task.remindText);
-		remindBox.setHint(Component.literal("完成 / 触发时的额外提示，可留空"));
+		remindBox.setHint(Component.literal(I18n.t("edit.remindHint")));
 		if (com.easytaskmgr.config.ModConfig.get().advancementRequirements
 				&& task.type == TaskType.ADVANCEMENT && task.showRequirements) {
 			remindBox.visible = false;
 		}
 
-		addRenderableWidget(Button.builder(Component.literal("保存"), b -> save())
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.save")), b -> save())
 				.bounds(width / 2 - 100, rowButtons, 96, 20).build());
-		addRenderableWidget(Button.builder(Component.literal("取消"), b -> onClose())
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.cancel")), b -> onClose())
 				.bounds(width / 2 + 4, rowButtons, 96, 20).build());
 	}
 
@@ -180,16 +210,24 @@ public class TaskEditScreen extends Screen {
 		rowButtons = Math.min(height - 26, 190);
 	}
 
+	private Component timerHint() {
+		return switch (task.timerMode) {
+			case INTERVAL -> Component.literal(I18n.t("edit.timerHint") + I18n.t("edit.intervalHint"));
+			case GAME_TIME -> Component.literal(I18n.t("edit.gameTimeHint"));
+			default -> Component.literal(I18n.t("edit.timerHint"));
+		};
+	}
+
 	private static String fmt(double v) {
 		return String.format("%.1f", v);
 	}
 
 	private Component containerLabel() {
-		return Component.literal("容器计数：" + (task.includeContainers ? "开" : "关"));
+		return Component.literal(I18n.t("edit.container", I18n.t(task.includeContainers ? "ui.on" : "ui.off")));
 	}
 
 	private Component requirementsLabel() {
-		return Component.literal("显示前置条件：" + (task.showRequirements ? "开" : "关"));
+		return Component.literal(I18n.t("edit.requirements", I18n.t(task.showRequirements ? "ui.on" : "ui.off")));
 	}
 
 	private void refreshSuggestions(String text, boolean advancement) {
@@ -234,34 +272,40 @@ public class TaskEditScreen extends Screen {
 		if (intervalBox != null) {
 			task.intervalMinutes = Math.max(1, parseInt(intervalBox.getValue(), task.intervalMinutes));
 		}
+		if (hourBox != null) {
+			task.gameHour = Math.max(0, Math.min(23, parseInt(hourBox.getValue(), task.gameHour)));
+		}
+		if (minuteBox != null) {
+			task.gameMinute = Math.max(0, Math.min(59, parseInt(minuteBox.getValue(), task.gameMinute)));
+		}
+		if (daysBox != null) {
+			task.gameDayInterval = Math.max(1, parseInt(daysBox.getValue(), task.gameDayInterval));
+		}
 	}
 
 	private void save() {
 		captureFields();
 		String text = task.text == null ? "" : task.text.trim();
 		if (text.isEmpty()) {
-			ClientTasks.toast("内容不能为空");
+			ClientTasks.toast(I18n.t("edit.empty"));
 			return;
 		}
 		task.text = text;
 
 		switch (task.type) {
-			case COLLECT, CRAFT -> {
+			case COLLECT -> {
 				String resolved = resolveTarget(false);
 				if (resolved.isEmpty()) {
-					ClientTasks.toast("请填写物品名");
+					ClientTasks.toast(I18n.t("edit.needItem"));
 					return;
 				}
 				task.target = resolved;
-				if (task.type == TaskType.CRAFT) {
-					task.progress = 0;
-				}
 				task.triggered = false;
 			}
 			case ADVANCEMENT -> {
 				String resolved = resolveTarget(true);
 				if (resolved.isEmpty()) {
-					ClientTasks.toast("请填写成就名");
+					ClientTasks.toast(I18n.t("edit.needAdv"));
 					return;
 				}
 				task.target = resolved;
@@ -285,7 +329,7 @@ public class TaskEditScreen extends Screen {
 		}
 		TaskStore.get().save();
 		ClientNet.markDirty();
-		ClientTasks.toast(creating ? "已新建待办" : "已保存修改");
+		ClientTasks.toast(creating ? I18n.t("edit.created") : I18n.t("edit.saved"));
 		onClose();
 	}
 
@@ -374,30 +418,30 @@ public class TaskEditScreen extends Screen {
 		int x0 = width / 2 - CONTENT_WIDTH / 2;
 
 		graphics.centeredText(font, title, width / 2, 22, 0xFFFFD54F);
-		graphics.text(font, "内容", x0, rowType - 28, 0xFFB0BEC5);
+		graphics.text(font, I18n.t("edit.content"), x0, rowType - 28, 0xFFB0BEC5);
 
 		switch (task.type) {
-			case COLLECT, CRAFT -> {
-				graphics.text(font, "物品名（支持中文，输入后下面出候选，滚轮翻页）", x0, rowTarget - 12, 0xFFB0BEC5);
+			case COLLECT -> {
+				graphics.text(font, I18n.t("edit.itemHint"), x0, rowTarget - 12, 0xFFB0BEC5);
 				suggestionX = x0;
 				suggestionY = rowSuggest;
 				suggestionWidth = CONTENT_WIDTH - 70;
 			}
 			case ADVANCEMENT -> {
-				graphics.text(font, "成就名（支持中文，输入后下面出候选，滚轮翻页）", x0, rowTarget - 12, 0xFFB0BEC5);
+				graphics.text(font, I18n.t("edit.advHint"), x0, rowTarget - 12, 0xFFB0BEC5);
 				suggestionX = x0;
 				suggestionY = rowSuggest;
 				suggestionWidth = CONTENT_WIDTH;
 			}
-			case COORDINATE -> graphics.text(font, "坐标 x / y / z 与到达半径", x0, rowTarget - 12, 0xFFB0BEC5);
-			case TIMER -> graphics.text(font, "提醒方式与间隔（分钟）", x0, rowTarget - 12, 0xFFB0BEC5);
-			case NORMAL -> graphics.text(font, "只记录事情，完成后在列表里手动勾选。", x0, rowTarget - 12, 0xFF80CBC4);
+			case COORDINATE -> graphics.text(font, I18n.t("edit.coordHint"), x0, rowTarget - 12, 0xFFB0BEC5);
+			case TIMER -> graphics.text(font, timerHint(), x0, rowTarget - 12, 0xFFB0BEC5);
+			case NORMAL -> graphics.text(font, I18n.t("edit.normalHint"), x0, rowTarget - 12, 0xFF80CBC4);
 		}
 
 		boolean showRequirements = com.easytaskmgr.config.ModConfig.get().advancementRequirements
 				&& task.type == TaskType.ADVANCEMENT && task.showRequirements;
 		if (!showRequirements) {
-			graphics.text(font, "附加提醒", x0, rowRemind - 12, 0xFFB0BEC5);
+			graphics.text(font, I18n.t("edit.remind"), x0, rowRemind - 12, 0xFFB0BEC5);
 		} else {
 			drawRequirements(graphics, x0);
 		}
@@ -444,7 +488,7 @@ public class TaskEditScreen extends Screen {
 		List<String> lines = AdvancementInfo.describe(minecraft, task.target);
 		int y = 148;
 		int maxLines = Math.max(2, (rowButtons - y) / 10);
-		graphics.text(font, "前置条件 / 达成方式", x0, y, 0xFFFFD54F);
+		graphics.text(font, I18n.t("edit.reqHeader"), x0, y, 0xFFFFD54F);
 		y += 10;
 		int shown = 0;
 		for (String raw : lines) {

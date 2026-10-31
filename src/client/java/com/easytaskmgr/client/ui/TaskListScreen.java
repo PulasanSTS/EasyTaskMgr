@@ -2,6 +2,7 @@ package com.easytaskmgr.client.ui;
 
 import com.easytaskmgr.client.ClientNet;
 import com.easytaskmgr.client.TextWrap;
+import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.task.Task;
 import com.easytaskmgr.task.TaskStore;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -13,20 +14,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 待办列表：分页显示，支持勾选完成、编辑、删除，以及进入新增 / 设置界面。
- * 长标题按宽度换行（最多两行），不再用省略号。
+ * 待办列表（单页 + 滚动）。
+ *
+ * <p>不再分页：一次显示若干行，用鼠标滚轮上下滚动；右侧画一条滚动条指示位置。
+ * 每行仍是「勾选 / 文本 / 编辑 / 删除」。
  */
 public class TaskListScreen extends Screen {
-	private static final int PAGE_SIZE = 4;
+	private static final int LIST_TOP = 58;
 	private static final int ROW_HEIGHT = 34;
 	private static final int TEXT_WIDTH = 210;
 
 	private final Screen parent;
-	private int page;
+	private int scrollOffset;
 	private boolean showDone;
+	private int visibleRows = 4;
 
 	public TaskListScreen(Screen parent) {
-		super(Component.literal("待办列表"));
+		super(Component.literal(I18n.t("list.title")));
 		this.parent = parent;
 	}
 
@@ -38,24 +42,24 @@ public class TaskListScreen extends Screen {
 		return list;
 	}
 
-	private int pageCount(int size) {
-		return Math.max(1, (size + PAGE_SIZE - 1) / PAGE_SIZE);
+	private int maxOffset(int total) {
+		return Math.max(0, total - visibleRows);
 	}
 
 	@Override
 	protected void init() {
+		visibleRows = Math.max(3, (height - LIST_TOP - 46) / ROW_HEIGHT);
 		int cx = width / 2;
-		int listTop = 58;
 		List<Task> tasks = visibleTasks();
-		page = Math.max(0, Math.min(page, pageCount(tasks.size()) - 1));
+		scrollOffset = Math.max(0, Math.min(scrollOffset, maxOffset(tasks.size())));
 
-		for (int i = 0; i < PAGE_SIZE; i++) {
-			int index = page * PAGE_SIZE + i;
+		for (int i = 0; i < visibleRows; i++) {
+			int index = scrollOffset + i;
 			if (index >= tasks.size()) {
 				break;
 			}
 			Task task = tasks.get(index);
-			int y = listTop + i * ROW_HEIGHT;
+			int y = LIST_TOP + i * ROW_HEIGHT;
 			addRenderableWidget(Button.builder(Component.literal(task.done ? "✔" : "□"), b -> {
 				TaskStore.get().toggleDone(task);
 				TaskStore.get().save();
@@ -63,57 +67,64 @@ public class TaskListScreen extends Screen {
 				rebuildWidgets();
 			}).bounds(cx - 210, y, 20, 20).build());
 
-			addRenderableWidget(Button.builder(Component.literal("改"), b -> {
+			addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.edit")), b -> {
 				if (minecraft != null) {
 					minecraft.setScreenAndShow(new TaskEditScreen(task, false, this));
 				}
-			}).bounds(cx + 150, y, 24, 20).build());
+			}).bounds(cx + 150, y, 28, 20).build());
 
-			addRenderableWidget(Button.builder(Component.literal("×"), b -> {
+			addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.delete")), b -> {
 				TaskStore.get().remove(task);
 				TaskStore.get().save();
 				ClientNet.markDirty();
 				rebuildWidgets();
-			}).bounds(cx + 178, y, 20, 20).build());
+			}).bounds(cx + 182, y, 20, 20).build());
 		}
 
 		int bottom = height - 34;
-		addRenderableWidget(Button.builder(Component.literal("<"), b -> {
-			page = Math.max(0, page - 1);
-			rebuildWidgets();
-		}).bounds(cx - 210, bottom, 20, 20).build());
-
-		addRenderableWidget(Button.builder(Component.literal(">"), b -> {
-			page = Math.min(pageCount(visibleTasks().size()) - 1, page + 1);
-			rebuildWidgets();
-		}).bounds(cx - 184, bottom, 20, 20).build());
-
-		addRenderableWidget(Button.builder(Component.literal(showDone ? "隐藏已完成" : "显示已完成"), b -> {
+		addRenderableWidget(Button.builder(Component.literal(showDone ? I18n.t("ui.hideDone") : I18n.t("ui.showDone")), b -> {
 			showDone = !showDone;
+			scrollOffset = 0;
 			rebuildWidgets();
-		}).bounds(cx - 156, bottom, 80, 20).build());
+		}).bounds(cx - 210, bottom, 88, 20).build());
 
-		addRenderableWidget(Button.builder(Component.literal("新增"), b -> {
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.new")), b -> {
 			if (minecraft != null) {
 				minecraft.setScreenAndShow(new TaskEditScreen(new Task(), true, this));
 			}
-		}).bounds(cx - 68, bottom, 44, 20).build());
+		}).bounds(cx - 114, bottom, 44, 20).build());
 
-		addRenderableWidget(Button.builder(Component.literal("设置"), b -> {
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.settings")), b -> {
 			if (minecraft != null) {
 				minecraft.setScreenAndShow(new ConfigScreen(this));
 			}
-		}).bounds(cx - 20, bottom, 44, 20).build());
+		}).bounds(cx - 62, bottom, 44, 20).build());
 
-		addRenderableWidget(Button.builder(Component.literal("关闭"), b -> onClose())
-				.bounds(cx + 28, bottom, 48, 20).build());
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.close")), b -> onClose())
+				.bounds(cx - 10, bottom, 48, 20).build());
 
-		addRenderableWidget(Button.builder(Component.literal("清空已完成"), b -> {
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.clearDone")), b -> {
 			TaskStore.get().clearCompleted();
 			TaskStore.get().save();
 			ClientNet.markDirty();
+			scrollOffset = 0;
 			rebuildWidgets();
-		}).bounds(cx + 82, bottom, 86, 20).build());
+		}).bounds(cx + 46, bottom, 86, 20).build());
+	}
+
+	@Override
+	public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
+		int listBottom = LIST_TOP + visibleRows * ROW_HEIGHT;
+		if (mouseX >= width / 2 - 212 && mouseX <= width / 2 + 204 && mouseY >= LIST_TOP && mouseY <= listBottom) {
+			List<Task> tasks = visibleTasks();
+			int max = maxOffset(tasks.size());
+			if (max > 0) {
+				scrollOffset = Math.max(0, Math.min(max, scrollOffset - (int) Math.signum(vertical)));
+				rebuildWidgets();
+				return true;
+			}
+		}
+		return super.mouseScrolled(mouseX, mouseY, horizontal, vertical);
 	}
 
 	@Override
@@ -122,23 +133,23 @@ public class TaskListScreen extends Screen {
 		graphics.centeredText(font, title, width / 2, 22, 0xFFFFD54F);
 
 		int cx = width / 2;
-		int listTop = 58;
 		List<Task> tasks = visibleTasks();
-
 		int total = tasks.size();
-		String pageInfo = "第 " + (page + 1) + " / " + pageCount(total) + " 页 · 共 " + total + " 条"
-				+ (ClientNet.remoteCount() > 0 ? " · 队友 " + ClientNet.remoteCount() + " 条" : "");
-		graphics.centeredText(font, Component.literal(pageInfo), cx, 40, 0xFF9E9E9E);
+		int end = Math.min(total, scrollOffset + visibleRows);
+		String info = I18n.t("list.range", total == 0 ? 0 : scrollOffset + 1, end, total)
+				+ (maxOffset(total) > 0 ? " · " + I18n.t("list.scrollHint") : "")
+				+ (ClientNet.remoteCount() > 0 ? I18n.t("list.teammates", ClientNet.remoteCount()) : "");
+		graphics.centeredText(font, Component.literal(info), cx, 40, 0xFF9E9E9E);
 
-		for (int i = 0; i < PAGE_SIZE; i++) {
-			int index = page * PAGE_SIZE + i;
+		for (int i = 0; i < visibleRows; i++) {
+			int index = scrollOffset + i;
 			if (index >= tasks.size()) {
 				break;
 			}
 			Task task = tasks.get(index);
-			int y = listTop + i * ROW_HEIGHT;
+			int y = LIST_TOP + i * ROW_HEIGHT;
 			int color = task.done ? 0xFF757575 : task.priority().color();
-			String prefix = task.done ? "[已完成] " : "[" + task.priority().label() + "] ";
+			String prefix = task.done ? I18n.t("list.donePrefix") : "[" + task.priority().label() + "] ";
 			List<String> lines = TextWrap.wrap(font, prefix + task.displayText(), TEXT_WIDTH);
 			int shown = Math.min(2, lines.size());
 			for (int l = 0; l < shown; l++) {
@@ -151,7 +162,23 @@ public class TaskListScreen extends Screen {
 			}
 		}
 
-		graphics.text(font, "B 快速添加 · N 列表 · K 设置 · H 隐藏 HUD", 6, height - 14, 0xFF78909C);
+		if (total == 0) {
+			graphics.centeredText(font, Component.literal(I18n.t("list.empty")), cx, LIST_TOP + 20, 0xFF9E9E9E);
+		}
+
+		// 滚动条
+		int max = maxOffset(total);
+		if (max > 0) {
+			int barX = cx + 206;
+			int barTop = LIST_TOP;
+			int barHeight = visibleRows * ROW_HEIGHT - 4;
+			graphics.fill(barX, barTop, barX + 3, barTop + barHeight, 0x33FFFFFF);
+			int thumbHeight = Math.max(12, barHeight * visibleRows / total);
+			int thumbTop = barTop + (barHeight - thumbHeight) * scrollOffset / max;
+			graphics.fill(barX, thumbTop, barX + 3, thumbTop + thumbHeight, 0xAAFFD54F);
+		}
+
+		graphics.text(font, I18n.t("list.footer"), 6, height - 12, 0xFF78909C);
 
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}
@@ -159,9 +186,9 @@ public class TaskListScreen extends Screen {
 	private String detailOf(Task task) {
 		return switch (task.type) {
 			case NORMAL -> null;
-			case COLLECT, CRAFT -> task.progressText();
+			case COLLECT -> task.progressText();
 			case TIMER -> task.timerMode.label();
-			case ADVANCEMENT -> "成就";
+			case ADVANCEMENT -> I18n.t("type.advancement");
 			case COORDINATE -> String.format("%.0f, %.0f, %.0f", task.x, task.y, task.z);
 		};
 	}

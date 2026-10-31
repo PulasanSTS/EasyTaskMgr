@@ -2,8 +2,9 @@ package com.easytaskmgr;
 
 import com.easytaskmgr.advancement.AdvancementDescriber;
 import com.easytaskmgr.net.AdvancementDataS2C;
+import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.net.AdvancementQueryC2S;
-import com.easytaskmgr.net.CraftEventS2C;
+
 import com.easytaskmgr.net.ShareTasksC2S;
 import com.easytaskmgr.net.SharedTasksS2C;
 import net.fabricmc.api.ModInitializer;
@@ -40,24 +41,6 @@ public class EasyTaskMgr implements ModInitializer {
 	/** 服务端缓存：玩家 UUID -> 该玩家共享的任务包。 */
 	private static final Map<UUID, SharedTasksS2C> SHARED_CACHE = new ConcurrentHashMap<>();
 	private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
-	/** 合成去重：玩家 -> 上一次发送的「物品 x 数量 @ tick」。 */
-	private static final Map<UUID, String> LAST_CRAFT = new ConcurrentHashMap<>();
-
-	/**
-	 * 记录一次合成：同一 tick 内同一物品+数量只发一次，避免 onTake 和 quickMoveStack 双触发重复计数。
-	 */
-	public static void notifyCraft(ServerPlayer player, ItemStack stack) {
-		if (stack.isEmpty()) {
-			return;
-		}
-		String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-		String key = itemId + "x" + stack.getCount() + "@" + player.level().getGameTime();
-		String previous = LAST_CRAFT.put(player.getUUID(), key);
-		if (key.equals(previous)) {
-			return;
-		}
-		ServerPlayNetworking.send(player, new CraftEventS2C(itemId, stack.getCount()));
-	}
 
 	public static Identifier id(String path) {
 		return Identifier.fromNamespaceAndPath(MOD_ID, path);
@@ -67,7 +50,6 @@ public class EasyTaskMgr implements ModInitializer {
 	public void onInitialize() {
 		PayloadTypeRegistry.serverboundPlay().register(ShareTasksC2S.TYPE, ShareTasksC2S.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(SharedTasksS2C.TYPE, SharedTasksS2C.CODEC);
-		PayloadTypeRegistry.clientboundPlay().register(CraftEventS2C.TYPE, CraftEventS2C.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(AdvancementQueryC2S.TYPE, AdvancementQueryC2S.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(AdvancementDataS2C.TYPE, AdvancementDataS2C.CODEC);
 
@@ -109,6 +91,7 @@ public class EasyTaskMgr implements ModInitializer {
 
 		ServerPlayNetworking.registerGlobalReceiver(AdvancementQueryC2S.TYPE, (payload, context) -> {
 			var manager = context.server().getAdvancements();
+			I18n.Lang lang = I18n.Lang.byCode(payload.lang());
 			Map<String, Object> root = new LinkedHashMap<>();
 			if (payload.id().isEmpty()) {
 				List<Map<String, String>> entries = new ArrayList<>();
@@ -129,7 +112,7 @@ public class EasyTaskMgr implements ModInitializer {
 				root.put("id", payload.id());
 				if (holder == null) {
 					root.put("title", payload.id());
-					root.put("reqs", List.of("未找到该成就"));
+					root.put("reqs", List.of(I18n.t(lang, "adv.notFound")));
 				} else {
 					root.put("id", holder.id().toString());
 					root.put("title", AdvancementDescriber.title(holder));
@@ -137,7 +120,7 @@ public class EasyTaskMgr implements ModInitializer {
 					root.put("desc", AdvancementDescriber.description(holder));
 					root.put("descKey", AdvancementDescriber.descKey(holder));
 					root.put("parentId", AdvancementDescriber.parentId(holder));
-					root.put("reqs", AdvancementDescriber.requirements(holder));
+					root.put("reqs", AdvancementDescriber.requirements(holder, lang));
 				}
 			}
 			ServerPlayNetworking.send(context.player(), new AdvancementDataS2C(GSON.toJson(root)));

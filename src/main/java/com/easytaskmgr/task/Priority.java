@@ -1,5 +1,9 @@
 package com.easytaskmgr.task;
 
+import com.easytaskmgr.i18n.I18n;
+
+import java.util.Locale;
+
 /**
  * 任务优先级。数值越大越靠前，颜色用于 HUD / 列表显示。
  */
@@ -24,7 +28,7 @@ public enum Priority {
 	}
 
 	public String label() {
-		return label;
+		return I18n.t("prio." + name().toLowerCase(Locale.ROOT));
 	}
 
 	public int color() {

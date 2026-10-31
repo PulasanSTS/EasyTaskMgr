@@ -27,6 +27,13 @@ public final class Suggestions {
 	private static List<Entry> advancementCache;
 	private static int advancementCacheKey = -1;
 
+	/** 语言/资源包变化后清空缓存。 */
+	public static void invalidate() {
+		itemCache = null;
+		advancementCache = null;
+		advancementCacheKey = -1;
+	}
+
 	private Suggestions() {
 	}
 
@@ -38,11 +45,13 @@ public final class Suggestions {
 				if (item == null || item == Items.AIR) {
 					continue;
 				}
-				String name;
-				try {
-					name = new ItemStack(item).getHoverName().getString();
-				} catch (Exception e) {
-					name = id.getPath();
+				String name = LangResources.translate(item.getDescriptionId());
+				if (name == null) {
+					try {
+						name = new ItemStack(item).getHoverName().getString();
+					} catch (Exception e) {
+						name = id.getPath();
+					}
 				}
 				list.add(new Entry(id.toString(), name, id.getPath()));
 			}
@@ -69,7 +78,7 @@ public final class Suggestions {
 				if (holder.value().display().isEmpty()) {
 					continue;
 				}
-				String name = holder.value().display().get().title().getString();
+				String name = LangResources.translate(holder.value().display().get().title().getString());
 				if (name.isBlank()) {
 					continue;
 				}

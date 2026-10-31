@@ -2,6 +2,7 @@ package com.easytaskmgr.client.ui;
 
 import com.easytaskmgr.client.ClientNet;
 import com.easytaskmgr.client.ClientTasks;
+import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.task.Priority;
 import com.easytaskmgr.task.Task;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -22,7 +23,7 @@ public class QuickAddScreen extends Screen {
 	private Button priorityButton;
 
 	public QuickAddScreen(Screen parent) {
-		super(Component.literal("快速添加待办"));
+		super(Component.literal(I18n.t("quick.title")));
 		this.parent = parent;
 	}
 
@@ -31,7 +32,7 @@ public class QuickAddScreen extends Screen {
 		int cx = width / 2;
 		int y = height / 2 - 40;
 
-		input = new EditBox(font, cx - 100, y, 200, 20, Component.literal("要做的事…"));
+		input = new EditBox(font, cx - 100, y, 200, 20, Component.literal(I18n.t("quick.placeholder")));
 		input.setMaxLength(120);
 		input.setValue("");
 		addRenderableWidget(input);
@@ -42,26 +43,26 @@ public class QuickAddScreen extends Screen {
 		}).bounds(cx - 100, y + 28, 96, 20).build();
 		addRenderableWidget(priorityButton);
 
-		addRenderableWidget(Button.builder(Component.literal("添加"), b -> submit())
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("quick.add")), b -> submit())
 				.bounds(cx + 4, y + 28, 96, 20).build());
 
-		addRenderableWidget(Button.builder(Component.literal("更多选项…"), b -> openAdvanced())
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("quick.more")), b -> openAdvanced())
 				.bounds(cx - 100, y + 56, 96, 20).build());
 
-		addRenderableWidget(Button.builder(Component.literal("取消"), b -> onClose())
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.cancel")), b -> onClose())
 				.bounds(cx + 4, y + 56, 96, 20).build());
 
 		setInitialFocus(input);
 	}
 
 	private Component priorityLabel() {
-		return Component.literal("优先级：" + priority.label());
+		return Component.literal(I18n.t("ui.priority", priority.label()));
 	}
 
 	private void submit() {
 		String text = input.getValue().trim();
 		if (text.isEmpty()) {
-			ClientTasks.toast("内容不能为空");
+			ClientTasks.toast(I18n.t("edit.empty"));
 			return;
 		}
 		ClientTasks.addQuick(text, priority);
@@ -91,7 +92,7 @@ public class QuickAddScreen extends Screen {
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		graphics.fill(0, 0, width, height, 0x99000000);
 		graphics.centeredText(font, title, width / 2, height / 2 - 78, 0xFFFFD54F);
-		graphics.centeredText(font, Component.literal("输入内容后按 Enter 直接添加；Tab 切换按钮"),
+		graphics.centeredText(font, Component.literal(I18n.t("quick.hint")),
 				width / 2, height / 2 - 64, 0xFF9E9E9E);
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}

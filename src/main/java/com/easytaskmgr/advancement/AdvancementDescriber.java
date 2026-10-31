@@ -1,11 +1,11 @@
 package com.easytaskmgr.advancement;
 
+import com.easytaskmgr.i18n.I18n;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 
 import java.util.ArrayList;
@@ -15,13 +15,10 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /**
- * 成就条件描述器（公共端）。
+ * 成就条件描述器（公共端，支持中英文）。
  *
- * <p>服务端用它把成就树整理成「标题 + 前置 + 条件」发给客户端；
- * 客户端在单机 / 数据包场景下也用它做本地兜底解析。
- *
- * <p>能识别常见触发器：收集物品、吃掉物品、进入方块、合成、交易、附魔、击杀、换维度、钓鱼、繁殖等；
- * 未知触发器回退成去掉 {@code Trigger} 的类名。
+ * <p>服务端按「请求方语言」把成就树整理成「标题 + 前置 + 条件」发给客户端；
+ * 客户端在单机 / 数据包场景下用它做本地兜底解析。
  */
 public final class AdvancementDescriber {
 	private AdvancementDescriber() {
@@ -46,113 +43,14 @@ public final class AdvancementDescriber {
 		return holder.value().display().map(d -> d.description().getString()).orElse("");
 	}
 
-	/** 前置成就标题；需要传入一个「按 id 查 holder」的函数。 */
-	public static String parentTitle(AdvancementHolder holder, Function<Identifier, AdvancementHolder> lookup) {
+	public static String parentTitle(AdvancementHolder holder, Function<Identifier, AdvancementHolder> lookup,
+			I18n.Lang lang) {
 		return holder.value().parent()
 				.map(id -> {
 					AdvancementHolder parent = lookup.apply(id);
 					return parent != null ? title(parent) : id.toString();
 				})
-				.orElse("无（根成就）");
-	}
-
-	/** 把 criteria 翻译成可读条件，例如「获得 1 个 钻石」。 */
-	public static List<String> requirements(AdvancementHolder holder) {
-		List<String> result = new ArrayList<>();
-		for (var entry : holder.value().criteria().entrySet()) {
-			String text = describe(entry.getValue());
-			if (text != null && !text.isBlank()) {
-				result.add(text);
-			}
-		}
-		if (result.isEmpty()) {
-			result.add("完成条件由数据包定义");
-		}
-		return result;
-	}
-
-	private static String describe(net.minecraft.advancements.triggers.Criterion<?> criterion) {
-		Object instance = criterion.triggerInstance();
-		String name = criterion.trigger().getClass().getSimpleName().toLowerCase(Locale.ROOT);
-
-		if (instance instanceof net.minecraft.advancements.triggers.InventoryChangeTrigger.TriggerInstance inv) {
-			List<String> parts = new ArrayList<>();
-			for (var predicate : inv.items()) {
-				parts.add(itemText(predicate));
-			}
-			return parts.isEmpty() ? "获得物品" : "获得 " + String.join(" 或 ", parts);
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.ConsumeItemTrigger.TriggerInstance eat) {
-			return eat.item().map(p -> "吃掉 " + itemText(p)).orElse("吃掉物品");
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.EnterBlockTrigger.TriggerInstance enter) {
-			return enter.block().map(AdvancementDescriber::blockText).orElse("进入特定方块");
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.RecipeCraftedTrigger.TriggerInstance craft) {
-			if (!craft.ingredients().isEmpty()) {
-				return "按配方合成（材料：" + itemText(craft.ingredients().get(0)) + " 等）";
-			}
-			return "按配方合成指定物品";
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.TradeTrigger.TriggerInstance trade) {
-			return trade.item().map(p -> "与村民交易 " + itemText(p)).orElse("与村民交易");
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.EnchantedItemTrigger.TriggerInstance enchant) {
-			return enchant.item().map(p -> "附魔 " + itemText(p)).orElse("附魔物品");
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.KilledTrigger.TriggerInstance) {
-			return "击杀生物";
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.ChangeDimensionTrigger.TriggerInstance) {
-			return "前往其他维度";
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.FishingRodHookedTrigger.TriggerInstance) {
-			return "钓鱼";
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.BredAnimalsTrigger.TriggerInstance) {
-			return "繁殖动物";
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.CuredZombieVillagerTrigger.TriggerInstance) {
-			return "治愈僵尸村民";
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.ConstructBeaconTrigger.TriggerInstance) {
-			return "搭建信标";
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.LevitationTrigger.TriggerInstance) {
-			return "飘浮";
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.UsedEnderEyeTrigger.TriggerInstance) {
-			return "使用末影之眼";
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.ShotCrossbowTrigger.TriggerInstance) {
-			return "用弩射击";
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.RecipeUnlockedTrigger.TriggerInstance) {
-			return "解锁配方";
-		}
-		if (instance instanceof net.minecraft.advancements.triggers.PlayerTrigger.TriggerInstance) {
-			return "满足特定条件";
-		}
-
-		if (name.contains("inventorychange")) {
-			return "获得物品";
-		}
-		if (name.contains("killed")) {
-			return "击杀生物";
-		}
-		if (name.contains("consume")) {
-			return "吃掉物品";
-		}
-		if (name.contains("enterblock")) {
-			return "进入方块";
-		}
-		if (name.contains("location") || name.contains("distance")) {
-			return "到达指定位置";
-		}
-		if (name.contains("recipe")) {
-			return "合成 / 解锁配方";
-		}
-		return criterion.trigger().getClass().getSimpleName().replace("Trigger", "");
+				.orElse(I18n.t(lang, "info.noParent"));
 	}
 
 	/** 前置成就 id（客户端自己查名字，避免服务端语言不同）。 */
@@ -179,26 +77,140 @@ public final class AdvancementDescriber {
 		return "";
 	}
 
-	private static String itemText(net.minecraft.advancements.predicates.ItemPredicate predicate) {
-		Optional<HolderSet<Item>> items = predicate.items();
-		int min = predicate.count().min().orElse(1);
-		String count = min > 1 ? min + " 个 " : "";
-		if (items.isEmpty()) {
-			return count + "物品";
-		}
-		List<String> names = new ArrayList<>();
-		int i = 0;
-		for (var holder : items.get()) {
-			if (i++ >= 3) {
-				names.add("…");
-				break;
+	/** 把 criteria 翻译成可读条件。 */
+	public static List<String> requirements(AdvancementHolder holder, I18n.Lang lang) {
+		List<String> result = new ArrayList<>();
+		for (var entry : holder.value().criteria().entrySet()) {
+			String text = describe(entry.getValue(), lang);
+			if (text != null && !text.isBlank()) {
+				result.add(text);
 			}
-			names.add("{{item:" + BuiltInRegistries.ITEM.getKey(holder.value()) + "}}");
 		}
-		return count + String.join(" 或 ", names);
+		if (result.isEmpty()) {
+			result.add(I18n.t(lang, "adv.unknown"));
+		}
+		return result;
 	}
 
-	private static String blockText(HolderSet<Block> blocks) {
+	private static String describe(net.minecraft.advancements.triggers.Criterion<?> criterion, I18n.Lang lang) {
+		Object instance = criterion.triggerInstance();
+		String name = criterion.trigger().getClass().getSimpleName().toLowerCase(Locale.ROOT);
+
+		if (instance instanceof net.minecraft.advancements.triggers.InventoryChangeTrigger.TriggerInstance inv) {
+			List<String> parts = new ArrayList<>();
+			for (var predicate : inv.items()) {
+				parts.add(itemText(predicate, lang));
+			}
+			return parts.isEmpty() ? I18n.t(lang, "adv.obtainItem")
+					: I18n.t(lang, "adv.obtain", String.join(I18n.t(lang, "adv.or"), parts));
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.ConsumeItemTrigger.TriggerInstance eat) {
+			return eat.item().map(p -> I18n.t(lang, "adv.consume", itemText(p, lang)))
+					.orElse(I18n.t(lang, "adv.consumeAny"));
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.EnterBlockTrigger.TriggerInstance enter) {
+			return enter.block().map(b -> I18n.t(lang, "adv.enter", blockText(b, lang)))
+					.orElse(I18n.t(lang, "adv.enterAny"));
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.RecipeCraftedTrigger.TriggerInstance craft) {
+			if (!craft.ingredients().isEmpty()) {
+				return I18n.t(lang, "adv.craft.ingredients", itemText(craft.ingredients().get(0), lang));
+			}
+			return I18n.t(lang, "adv.craft");
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.TradeTrigger.TriggerInstance trade) {
+			return trade.item().map(p -> I18n.t(lang, "adv.trade", itemText(p, lang)))
+					.orElse(I18n.t(lang, "adv.tradeAny"));
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.EnchantedItemTrigger.TriggerInstance enchant) {
+			return enchant.item().map(p -> I18n.t(lang, "adv.enchant", itemText(p, lang)))
+					.orElse(I18n.t(lang, "adv.enchantAny"));
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.KilledTrigger.TriggerInstance) {
+			return I18n.t(lang, "adv.kill");
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.ChangeDimensionTrigger.TriggerInstance) {
+			return I18n.t(lang, "adv.dimension");
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.FishingRodHookedTrigger.TriggerInstance) {
+			return I18n.t(lang, "adv.fish");
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.BredAnimalsTrigger.TriggerInstance) {
+			return I18n.t(lang, "adv.breed");
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.CuredZombieVillagerTrigger.TriggerInstance) {
+			return I18n.t(lang, "adv.cure");
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.ConstructBeaconTrigger.TriggerInstance) {
+			return I18n.t(lang, "adv.beacon");
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.LevitationTrigger.TriggerInstance) {
+			return I18n.t(lang, "adv.levitate");
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.UsedEnderEyeTrigger.TriggerInstance) {
+			return I18n.t(lang, "adv.eye");
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.ShotCrossbowTrigger.TriggerInstance) {
+			return I18n.t(lang, "adv.crossbow");
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.RecipeUnlockedTrigger.TriggerInstance) {
+			return I18n.t(lang, "adv.recipeUnlock");
+		}
+		if (instance instanceof net.minecraft.advancements.triggers.PlayerTrigger.TriggerInstance) {
+			return I18n.t(lang, "adv.player");
+		}
+
+		if (name.contains("inventorychange")) {
+			return I18n.t(lang, "adv.obtainItem");
+		}
+		if (name.contains("killed")) {
+			return I18n.t(lang, "adv.kill");
+		}
+		if (name.contains("consume")) {
+			return I18n.t(lang, "adv.consumeAny");
+		}
+		if (name.contains("enterblock")) {
+			return I18n.t(lang, "adv.enterAny");
+		}
+		if (name.contains("location") || name.contains("distance")) {
+			return I18n.t(lang, "adv.location");
+		}
+		if (name.contains("recipe")) {
+			return I18n.t(lang, "adv.craft");
+		}
+		return criterion.trigger().getClass().getSimpleName().replace("Trigger", "");
+	}
+
+	private static String itemText(net.minecraft.advancements.predicates.ItemPredicate predicate, I18n.Lang lang) {
+		Optional<HolderSet<Item>> items = predicate.items();
+		int min = predicate.count().min().orElse(1);
+		String itemName;
+		if (items.isEmpty()) {
+			itemName = I18n.t(lang, "adv.item");
+		} else {
+			List<String> names = new ArrayList<>();
+			int i = 0;
+			for (var holder : items.get()) {
+				if (i++ >= 3) {
+					names.add("…");
+					break;
+				}
+				names.add(itemName(holder.value()));
+			}
+			itemName = String.join(I18n.t(lang, "adv.or"), names);
+		}
+		return min > 1 ? I18n.t(lang, "adv.count", min, itemName) : itemName;
+	}
+
+	private static String itemName(Item item) {
+		try {
+			return "{{item:" + BuiltInRegistries.ITEM.getKey(item) + "}}";
+		} catch (Exception e) {
+			return BuiltInRegistries.ITEM.getKey(item).toString();
+		}
+	}
+
+	private static String blockText(HolderSet<Block> blocks, I18n.Lang lang) {
 		List<String> names = new ArrayList<>();
 		int i = 0;
 		for (var holder : blocks) {
@@ -208,6 +220,22 @@ public final class AdvancementDescriber {
 			}
 			names.add("{{block:" + BuiltInRegistries.BLOCK.getKey(holder.value()) + "}}");
 		}
-		return "进入 " + String.join(" 或 ", names);
+		return String.join(I18n.t(lang, "adv.or"), names);
+	}
+
+	/** 供 HUD 用的单行摘要（取前两条条件）。 */
+	public static String summary(AdvancementHolder holder, I18n.Lang lang) {
+		List<String> reqs = requirements(holder, lang);
+		if (reqs.isEmpty()) {
+			return null;
+		}
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < Math.min(2, reqs.size()); i++) {
+			if (i > 0) {
+				sb.append(" / ");
+			}
+			sb.append(reqs.get(i));
+		}
+		return sb.toString();
 	}
 }

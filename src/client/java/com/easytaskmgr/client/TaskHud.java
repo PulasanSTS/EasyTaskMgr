@@ -2,6 +2,7 @@ package com.easytaskmgr.client;
 
 import com.easytaskmgr.EasyTaskMgr;
 import com.easytaskmgr.config.ModConfig;
+import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.task.Task;
 import com.easytaskmgr.task.TaskStore;
 import com.easytaskmgr.task.TaskType;
@@ -62,7 +63,7 @@ public final class TaskHud implements HudElement {
 					TaskStore.get().complete(task);
 					TaskStore.get().save();
 					ClientNet.markDirty();
-					ClientTasks.toast("✓ 已完成：" + task.displayText());
+					ClientTasks.toast("✓ " + I18n.t("notify.done", task.displayText()));
 					return true;
 				}).orElse(false);
 			}
@@ -113,10 +114,10 @@ public final class TaskHud implements HudElement {
 			}
 		}
 		if (active.size() > shown) {
-			rows.add(new Row("…还有 " + (active.size() - shown) + " 条", 0xFF90A4AE, null));
+			rows.add(new Row(I18n.t("hud.more", active.size() - shown), 0xFF90A4AE, null));
 		}
 		if (!remote.isEmpty()) {
-			rows.add(new Row("—— 队友 ——", 0xFF80CBC4, null));
+			rows.add(new Row(I18n.t("hud.teammates"), 0xFF80CBC4, null));
 			for (Task task : remote) {
 				for (String line : TextWrap.wrap(font, task.owner + " · " + task.displayText() + suffix(task), maxWidth)) {
 					rows.add(new Row(line, 0xFFB0BEC5, null));
@@ -124,10 +125,10 @@ public final class TaskHud implements HudElement {
 			}
 		}
 		if (interactive) {
-			rows.add(new Row("点击任务即可完成 · 按 V 退出", 0xFFFFD54F, null));
+			rows.add(new Row(I18n.t("hud.hint"), 0xFFFFD54F, null));
 		}
 
-		String header = "待办清单 " + active.size();
+		String header = I18n.t("hud.title", active.size());
 		int textWidth = font.width(header);
 		for (Row row : rows) {
 			textWidth = Math.max(textWidth, font.width(row.text()));
@@ -188,14 +189,13 @@ public final class TaskHud implements HudElement {
 	public static String detail(Minecraft mc, Task task) {
 		ModConfig cfg = ModConfig.get();
 		return switch (task.type) {
-			case COLLECT -> task.progressText() + (task.includeContainers ? "（含容器）" : "");
-			case CRAFT -> task.progressText();
+			case COLLECT -> task.progressText() + (task.includeContainers ? I18n.t("hud.containers") : "");
 			case ADVANCEMENT -> {
-				String base = "成就 " + shortId(task.target);
+				String base = I18n.t("hud.advancement", shortId(task.target));
 				String req = (cfg.advancementRequirements && task.showRequirements) ? AdvancementInfo.summary(mc, task.target) : null;
-				yield req == null || req.isBlank() ? base : base + " · 需要：" + req;
+				yield req == null || req.isBlank() ? base : base + I18n.t("hud.need", req);
 			}
-			case TIMER -> task.timerMode.label() + (task.remindText.isBlank() ? "" : " · " + task.remindText);
+			case TIMER -> task.progressText() + (task.remindText.isBlank() ? "" : " · " + task.remindText);
 			case COORDINATE -> coordinate(mc, task, cfg);
 			case NORMAL -> null;
 		};
@@ -248,18 +248,18 @@ public final class TaskHud implements HudElement {
 	private static String direction(double relative) {
 		double abs = Math.abs(relative);
 		if (abs < 22.5) {
-			return "正前";
+			return I18n.t("dir.front");
 		}
 		if (abs < 67.5) {
-			return relative > 0 ? "右前" : "左前";
+			return relative > 0 ? I18n.t("dir.frontRight") : I18n.t("dir.frontLeft");
 		}
 		if (abs < 112.5) {
-			return relative > 0 ? "右侧" : "左侧";
+			return relative > 0 ? I18n.t("dir.right") : I18n.t("dir.left");
 		}
 		if (abs < 157.5) {
-			return relative > 0 ? "右后" : "左后";
+			return relative > 0 ? I18n.t("dir.backRight") : I18n.t("dir.backLeft");
 		}
-		return "正后";
+		return I18n.t("dir.back");
 	}
 
 	private static double wrapDegrees(double degrees) {

@@ -3,7 +3,6 @@
 	"package": "com.easytaskmgr.client.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"ResultSlotMixin",
 		"MouseHandlerMixin"
 	],
 	"injectors": {

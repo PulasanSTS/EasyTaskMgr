@@ -2,6 +2,7 @@ package com.easytaskmgr.client.ui;
 
 import com.easytaskmgr.client.ClientNet;
 import com.easytaskmgr.config.ModConfig;
+import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.task.Task;
 import com.easytaskmgr.task.TaskStore;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -13,18 +14,17 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 
 /**
- * 设置界面。
+ * 设置界面（支持中英文）。
  *
- * <p>左侧是一列固定宽度的设置项（16~216px），右侧留着显示 HUD 预览框——
- * 预览框就是真实的 HUD 位置，按住它拖动即可移动 HUD。
- * 这样两块区域在横向上不重叠，小窗口也不会出现文字压字。
+ * <p>左侧紧凑排布设置项，右侧是 HUD 预览框；按住预览框拖动即可移动 HUD。
+ * 语言：自动（跟随 Minecraft）/ 简体中文 / English。
  */
 public class ConfigScreen extends Screen {
 	private static final int X0 = 16;
-	private static final int ROW_HEIGHT = 22;
-	private static final int VALUE_X = X0 + 74;
-	private static final int BTN1_X = X0 + 112;
-	private static final int BTN2_X = X0 + 150;
+	private static final int ROW_HEIGHT = 20;
+	private static final int VALUE_X = X0 + 70;
+	private static final int BTN1_X = X0 + 108;
+	private static final int BTN2_X = X0 + 146;
 	private static final int BTN_W = 38;
 
 	private final Screen parent;
@@ -33,7 +33,7 @@ public class ConfigScreen extends Screen {
 	private double dragOffsetY;
 
 	public ConfigScreen(Screen parent) {
-		super(Component.literal("EasyTaskMgr 设置"));
+		super(Component.literal(I18n.t("cfg.title")));
 		this.parent = parent;
 	}
 
@@ -58,85 +58,108 @@ public class ConfigScreen extends Screen {
 
 	@Override
 	protected void init() {
-		int y = 40;
+		int y = 34;
 
-		addRenderableWidget(Button.builder(Component.literal("-"), b -> move(-2, 0)).bounds(BTN1_X, y, BTN_W, 18).build());
-		addRenderableWidget(Button.builder(Component.literal("+"), b -> move(2, 0)).bounds(BTN2_X, y, BTN_W, 18).build());
-
-		addRenderableWidget(Button.builder(Component.literal("-"), b -> move(0, -2)).bounds(BTN1_X, y + ROW_HEIGHT, BTN_W, 18).build());
-		addRenderableWidget(Button.builder(Component.literal("+"), b -> move(0, 2)).bounds(BTN2_X, y + ROW_HEIGHT, BTN_W, 18).build());
+		addRenderableWidget(Button.builder(Component.literal("-"), b -> move(-2, 0)).bounds(BTN1_X, y, BTN_W, 16).build());
+		addRenderableWidget(Button.builder(Component.literal("+"), b -> move(2, 0)).bounds(BTN2_X, y, BTN_W, 16).build());
+		addRenderableWidget(Button.builder(Component.literal("-"), b -> move(0, -2)).bounds(BTN1_X, y + ROW_HEIGHT, BTN_W, 16).build());
+		addRenderableWidget(Button.builder(Component.literal("+"), b -> move(0, 2)).bounds(BTN2_X, y + ROW_HEIGHT, BTN_W, 16).build());
 
 		addRenderableWidget(Button.builder(Component.literal("-"), b -> {
 			cfg().hudMaxWidth = Math.max(120, cfg().hudMaxWidth - 20);
 			cfg().save();
 			rebuildWidgets();
-		}).bounds(BTN1_X, y + ROW_HEIGHT * 2, BTN_W, 18).build());
+		}).bounds(BTN1_X, y + ROW_HEIGHT * 2, BTN_W, 16).build());
 		addRenderableWidget(Button.builder(Component.literal("+"), b -> {
 			cfg().hudMaxWidth = Math.min(400, cfg().hudMaxWidth + 20);
 			cfg().save();
 			rebuildWidgets();
-		}).bounds(BTN2_X, y + ROW_HEIGHT * 2, BTN_W, 18).build());
+		}).bounds(BTN2_X, y + ROW_HEIGHT * 2, BTN_W, 16).build());
 
 		addRenderableWidget(Button.builder(Component.literal("-"), b -> {
 			cfg().hudCompactLimit = Math.max(1, cfg().hudCompactLimit - 1);
 			cfg().save();
 			rebuildWidgets();
-		}).bounds(BTN1_X, y + ROW_HEIGHT * 3, BTN_W, 18).build());
+		}).bounds(BTN1_X, y + ROW_HEIGHT * 3, BTN_W, 16).build());
 		addRenderableWidget(Button.builder(Component.literal("+"), b -> {
 			cfg().hudCompactLimit = Math.min(20, cfg().hudCompactLimit + 1);
 			cfg().save();
 			rebuildWidgets();
-		}).bounds(BTN2_X, y + ROW_HEIGHT * 3, BTN_W, 18).build());
+		}).bounds(BTN2_X, y + ROW_HEIGHT * 3, BTN_W, 16).build());
 
-		int toggleY = y + ROW_HEIGHT * 4 + 8;
-		addRenderableWidget(toggle(X0, toggleY, "背景", cfg().hudBackground, v -> cfg().hudBackground = v));
-		addRenderableWidget(toggle(X0 + 66, toggleY, "距离", cfg().showDistance, v -> cfg().showDistance = v));
-		addRenderableWidget(toggle(X0 + 132, toggleY, "速度", cfg().showSpeed, v -> cfg().showSpeed = v));
+		int langY = y + ROW_HEIGHT * 4;
+		addRenderableWidget(Button.builder(languageValue(), b -> {
+			cfg().language = nextLanguage(cfg().language);
+			cfg().save();
+			com.easytaskmgr.client.Language.apply();
+			rebuildWidgets();
+		}).bounds(BTN1_X, langY, 110, 16).build());
 
-		addRenderableWidget(toggle(X0, toggleY + ROW_HEIGHT, "队友", cfg().showTeammates, v -> cfg().showTeammates = v));
-		addRenderableWidget(toggle(X0 + 66, toggleY + ROW_HEIGHT, "音效", cfg().soundEnabled, v -> cfg().soundEnabled = v));
-		addRenderableWidget(toggle(X0 + 132, toggleY + ROW_HEIGHT, "共享", cfg().shareEnabled, v -> {
+		int toggleY = langY + 24;
+		addRenderableWidget(toggle(X0, toggleY, "cfg.bg", cfg().hudBackground, v -> cfg().hudBackground = v));
+		addRenderableWidget(toggle(X0 + 88, toggleY, "cfg.dist", cfg().showDistance, v -> cfg().showDistance = v));
+		addRenderableWidget(toggle(X0, toggleY + ROW_HEIGHT, "cfg.speed", cfg().showSpeed, v -> cfg().showSpeed = v));
+		addRenderableWidget(toggle(X0 + 88, toggleY + ROW_HEIGHT, "cfg.team", cfg().showTeammates, v -> cfg().showTeammates = v));
+		addRenderableWidget(toggle(X0, toggleY + ROW_HEIGHT * 2, "cfg.sound", cfg().soundEnabled, v -> cfg().soundEnabled = v));
+		addRenderableWidget(toggle(X0 + 88, toggleY + ROW_HEIGHT * 2, "cfg.share", cfg().shareEnabled, v -> {
 			cfg().shareEnabled = v;
 			if (!v) {
 				ClientNet.reset();
 			}
 		}));
 
-		int bottom = height - 30;
-		addRenderableWidget(Button.builder(Component.literal("重置位置"), b -> {
+		int bottom = height - 34;
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("cfg.reset")), b -> {
 			cfg().hudXPercent = 99;
 			cfg().hudYPercent = 2;
 			cfg().save();
 			rebuildWidgets();
-		}).bounds(X0, bottom, 90, 20).build());
+		}).bounds(X0, bottom, 84, 18).build());
 
-		addRenderableWidget(Button.builder(Component.literal("完成"), b -> onClose())
-				.bounds(X0 + 100, bottom, 90, 20).build());
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("cfg.done")), b -> onClose())
+				.bounds(X0 + 92, bottom, 84, 18).build());
 	}
 
-	private Button toggle(int x, int y, String name, boolean initial, java.util.function.Consumer<Boolean> setter) {
-		return Button.builder(label(name, initial), b -> {
-			boolean next = !read(name);
+	private static String nextLanguage(String current) {
+		return switch (current == null ? "auto" : current) {
+			case "auto" -> "zh_cn";
+			case "zh_cn" -> "en_us";
+			default -> "auto";
+		};
+	}
+
+	private Component languageValue() {
+		String value = switch (cfg().language == null ? "auto" : cfg().language) {
+			case "zh_cn" -> I18n.t("cfg.lang.zh");
+			case "en_us" -> I18n.t("cfg.lang.en");
+			default -> I18n.t("cfg.lang.auto");
+		};
+		return Component.literal(value);
+	}
+
+	private Button toggle(int x, int y, String key, boolean initial, java.util.function.Consumer<Boolean> setter) {
+		return Button.builder(label(key, initial), b -> {
+			boolean next = !read(key);
 			setter.accept(next);
 			cfg().save();
-			b.setMessage(label(name, next));
-		}).bounds(x, y, 60, 18).build();
+			b.setMessage(label(key, next));
+		}).bounds(x, y, 84, 16).build();
 	}
 
-	private boolean read(String name) {
-		return switch (name) {
-			case "背景" -> cfg().hudBackground;
-			case "距离" -> cfg().showDistance;
-			case "速度" -> cfg().showSpeed;
-			case "队友" -> cfg().showTeammates;
-			case "音效" -> cfg().soundEnabled;
-			case "共享" -> cfg().shareEnabled;
+	private boolean read(String key) {
+		return switch (key) {
+			case "cfg.bg" -> cfg().hudBackground;
+			case "cfg.dist" -> cfg().showDistance;
+			case "cfg.speed" -> cfg().showSpeed;
+			case "cfg.team" -> cfg().showTeammates;
+			case "cfg.sound" -> cfg().soundEnabled;
+			case "cfg.share" -> cfg().shareEnabled;
 			default -> false;
 		};
 	}
 
-	private Component label(String name, boolean value) {
-		return Component.literal(name + (value ? " ✓" : " ✗"));
+	private Component label(String key, boolean value) {
+		return Component.literal(I18n.t(key) + (value ? " ✓" : " ✗"));
 	}
 
 	private void move(int dx, int dy) {
@@ -152,7 +175,6 @@ public class ConfigScreen extends Screen {
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
 		int[] r = hudRect();
-		// 26.3 里左键是 1（不是 GLFW 的 0），用 <=1 兼容两种约定
 		if (event.button() <= 1 && event.x() >= r[0] && event.x() <= r[2]
 				&& event.y() >= r[1] && event.y() <= r[3]) {
 			dragging = true;
@@ -189,22 +211,23 @@ public class ConfigScreen extends Screen {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		graphics.fill(0, 0, width, height, 0xC0000000);
-		graphics.text(font, "EasyTaskMgr 设置", X0, 12, 0xFFFFD54F);
+		graphics.text(font, I18n.t("cfg.title"), X0, 12, 0xFFFFD54F);
 
-		int y = 40;
-		graphics.text(font, "位置 X", X0, y + 5, 0xFFB0BEC5);
-		graphics.text(font, cfg().hudXPercent + "%", VALUE_X, y + 5, 0xFFFFFFFF);
-		graphics.text(font, "位置 Y", X0, y + ROW_HEIGHT + 5, 0xFFB0BEC5);
-		graphics.text(font, cfg().hudYPercent + "%", VALUE_X, y + ROW_HEIGHT + 5, 0xFFFFFFFF);
-		graphics.text(font, "HUD 宽度", X0, y + ROW_HEIGHT * 2 + 5, 0xFFB0BEC5);
-		graphics.text(font, cfg().hudMaxWidth + " px", VALUE_X, y + ROW_HEIGHT * 2 + 5, 0xFFFFFFFF);
-		graphics.text(font, "最多显示", X0, y + ROW_HEIGHT * 3 + 5, 0xFFB0BEC5);
-		graphics.text(font, cfg().hudCompactLimit + " 条", VALUE_X, y + ROW_HEIGHT * 3 + 5, 0xFFFFFFFF);
+		int y = 34;
+		graphics.text(font, I18n.t("cfg.posX"), X0, y + 4, 0xFFB0BEC5);
+		graphics.text(font, cfg().hudXPercent + "%", VALUE_X, y + 4, 0xFFFFFFFF);
+		graphics.text(font, I18n.t("cfg.posY"), X0, y + ROW_HEIGHT + 4, 0xFFB0BEC5);
+		graphics.text(font, cfg().hudYPercent + "%", VALUE_X, y + ROW_HEIGHT + 4, 0xFFFFFFFF);
+		graphics.text(font, I18n.t("cfg.width"), X0, y + ROW_HEIGHT * 2 + 4, 0xFFB0BEC5);
+		graphics.text(font, cfg().hudMaxWidth + I18n.t("cfg.px"), VALUE_X, y + ROW_HEIGHT * 2 + 4, 0xFFFFFFFF);
+		graphics.text(font, I18n.t("cfg.limit"), X0, y + ROW_HEIGHT * 3 + 4, 0xFFB0BEC5);
+		graphics.text(font, I18n.t("cfg.items", cfg().hudCompactLimit), VALUE_X, y + ROW_HEIGHT * 3 + 4, 0xFFFFFFFF);
+		graphics.text(font, I18n.t("cfg.language"), X0, y + ROW_HEIGHT * 4 + 4, 0xFFB0BEC5);
 
 		int[] r = hudRect();
 		graphics.fill(r[0], r[1], r[2], r[3], 0x6610171C);
 		com.easytaskmgr.client.TaskHud.frame(graphics, r[0], r[1], r[2], r[3], dragging ? 0xFFFFFF00 : 0xAAFFFF00);
-		graphics.text(font, "待办清单 " + TaskStore.get().active().size(), r[0] + 5, r[1] + 4, 0xFFFFD54F);
+		graphics.text(font, I18n.t("hud.title", TaskStore.get().active().size()), r[0] + 5, r[1] + 4, 0xFFFFD54F);
 		int lineY = r[1] + font.lineHeight + 8;
 		List<Task> active = TaskStore.get().active();
 		for (int i = 0; i < Math.min(3, active.size()); i++) {
@@ -212,11 +235,11 @@ public class ConfigScreen extends Screen {
 			lineY += font.lineHeight + 1;
 		}
 		if (active.isEmpty()) {
-			graphics.text(font, "1. 示例待办", r[0] + 5, lineY, 0xFFFFFFFF);
-			graphics.text(font, "2. 示例待办", r[0] + 5, lineY + font.lineHeight + 1, 0xFFFFFFFF);
+			graphics.text(font, I18n.t("cfg.sample", 1), r[0] + 5, lineY, 0xFFFFFFFF);
+			graphics.text(font, I18n.t("cfg.sample", 2), r[0] + 5, lineY + font.lineHeight + 1, 0xFFFFFFFF);
 		}
 
-		graphics.text(font, "按住右侧 HUD 预览框拖动即可移动位置", X0, 26, 0xFF9FB3C8);
+		graphics.text(font, I18n.t("cfg.hint"), X0, height - 12, 0xFF9FB3C8);
 
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}

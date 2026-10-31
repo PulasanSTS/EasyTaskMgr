@@ -57,7 +57,7 @@ public final class AdvancementCatalog {
 			return;
 		}
 		listRequested = true;
-		ClientPlayNetworking.send(new AdvancementQueryC2S(""));
+		ClientPlayNetworking.send(new AdvancementQueryC2S("", com.easytaskmgr.i18n.I18n.lang().code()));
 	}
 
 	public static void requestDetail(String id) {
@@ -65,7 +65,7 @@ public final class AdvancementCatalog {
 			return;
 		}
 		if (PENDING.add(id)) {
-			ClientPlayNetworking.send(new AdvancementQueryC2S(normalize(id)));
+			ClientPlayNetworking.send(new AdvancementQueryC2S(normalize(id), com.easytaskmgr.i18n.I18n.lang().code()));
 		}
 	}
 
@@ -100,6 +100,10 @@ public final class AdvancementCatalog {
 
 	private static String localize(String key, String fallback) {
 		if (key != null && !key.isBlank()) {
+			String translated = LangResources.translate(key);
+			if (translated != null) {
+				return translated;
+			}
 			try {
 				return Component.translatable(key).getString();
 			} catch (Exception ignored) {

@@ -40,6 +40,8 @@ public final class ModConfig {
 	public boolean advancementRequirements = false;
 	/** HUD 交互模式是否开启（开启后鼠标释放，点击普通任务可完成）。 */
 	public boolean hudInteractive = false;
+	/** 语言：auto（跟随 Minecraft）/ zh_cn / en_us。 */
+	public String language = "auto";
 	/** 完成 / 提醒时是否播放音效。 */
 	public boolean soundEnabled = true;
 	/** 多人共享总开关。 */
@@ -93,6 +95,7 @@ public final class ModConfig {
 		showDirectionArrow = o.showDirectionArrow;
 		advancementRequirements = o.advancementRequirements;
 		hudInteractive = o.hudInteractive;
+		language = (o.language != null && (o.language.equals("zh_cn") || o.language.equals("en_us"))) ? o.language : "auto";
 		soundEnabled = o.soundEnabled;
 		shareEnabled = o.shareEnabled;
 	}

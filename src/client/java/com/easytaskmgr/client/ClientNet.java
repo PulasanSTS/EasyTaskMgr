@@ -1,7 +1,6 @@
 package com.easytaskmgr.client;
 
 import com.easytaskmgr.config.ModConfig;
-import com.easytaskmgr.net.CraftEventS2C;
 import com.easytaskmgr.net.ShareTasksC2S;
 import com.easytaskmgr.net.SharedTasksS2C;
 import com.easytaskmgr.task.Task;
@@ -35,16 +34,13 @@ public final class ClientNet {
 			Minecraft mc = context.client();
 			mc.execute(() -> receive(payload));
 		});
-		ClientPlayNetworking.registerGlobalReceiver(CraftEventS2C.TYPE, (payload, context) ->
-				context.client().execute(() -> ClientTasks.onCrafted(payload.itemId(), payload.count())));
 	}
 
 	/** 服务端是否装了本模组（装了就以服务端合成事件为准）。 */
 	public static boolean serverHasMod() {
 		if (serverHasMod == null) {
 			try {
-				serverHasMod = ClientPlayNetworking.canSend(CraftEventS2C.TYPE)
-						|| ClientPlayNetworking.canSend(SharedTasksS2C.TYPE);
+				serverHasMod = ClientPlayNetworking.canSend(SharedTasksS2C.TYPE);
 			} catch (Exception e) {
 				serverHasMod = false;
 			}

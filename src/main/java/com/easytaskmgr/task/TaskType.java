@@ -1,12 +1,15 @@
 package com.easytaskmgr.task;
 
+import com.easytaskmgr.i18n.I18n;
+
+import java.util.Locale;
+
 /**
  * 任务类型：普通任务，以及四种「游戏内触发」的高级任务 + 时间提醒。
  */
 public enum TaskType {
 	NORMAL("普通"),
 	COLLECT("收集物品"),
-	CRAFT("合成物品"),
 	ADVANCEMENT("完成成就"),
 	COORDINATE("前往坐标"),
 	TIMER("时间提醒");
@@ -18,7 +21,7 @@ public enum TaskType {
 	}
 
 	public String label() {
-		return label;
+		return I18n.t("type." + name().toLowerCase(Locale.ROOT));
 	}
 
 	public boolean isAdvanced() {

@@ -1,6 +1,7 @@
 package com.easytaskmgr.client;
 
 import com.easytaskmgr.advancement.AdvancementDescriber;
+import com.easytaskmgr.i18n.I18n;
 import net.minecraft.client.Minecraft;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -8,7 +9,6 @@ import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -18,8 +18,7 @@ import java.util.regex.Pattern;
  * 成就信息门面：优先用服务端下发的目录（{@link AdvancementCatalog}），
  * 单机 / 数据包场景回退到本地 {@code ClientAdvancements}。
  *
- * <p>条件文本里的物品 / 方块用 {@code {{item:id}}} 占位，这里按客户端语言翻译，
- * 避免英文服务端把「钻石」显示成 Diamond。
+ * <p>条件文本里的物品 / 方块用 {@code {{item:id}}} 占位，这里按客户端语言翻译。
  */
 public final class AdvancementInfo {
 	private static final Map<String, List<String>> LOCAL_CACHE = new ConcurrentHashMap<>();
@@ -28,7 +27,7 @@ public final class AdvancementInfo {
 	private AdvancementInfo() {
 	}
 
-	/** HUD 用的简短条件列表，例如「获得 1 个 钻石」。 */
+	/** HUD 用的简短条件列表。 */
 	public static List<String> requirements(Minecraft mc, String rawId) {
 		String id = AdvancementCatalog.normalize(rawId);
 		AdvancementCatalog.Detail detail = AdvancementCatalog.detail(id);
@@ -45,7 +44,7 @@ public final class AdvancementInfo {
 		if (holder == null) {
 			return List.of();
 		}
-		List<String> reqs = localizeAll(AdvancementDescriber.requirements(holder));
+		List<String> reqs = localizeAll(AdvancementDescriber.requirements(holder, I18n.lang()));
 		LOCAL_CACHE.put(id, reqs);
 		return reqs;
 	}
@@ -57,15 +56,15 @@ public final class AdvancementInfo {
 
 		AdvancementCatalog.Detail catalog = AdvancementCatalog.detail(id);
 		if (catalog != null) {
-			lines.add("标题：" + catalog.title());
+			lines.add(I18n.t("info.title", catalog.title()));
 			if (!catalog.desc().isBlank()) {
-				lines.add("描述：" + catalog.desc());
+				lines.add(I18n.t("info.desc", catalog.desc()));
 			}
 			String parent = catalog.parentId().isBlank()
-					? "无（根成就）"
+					? I18n.t("info.noParent")
 					: AdvancementCatalog.titleOf(catalog.parentId());
-			lines.add("前置成就：" + parent);
-			lines.add("达成方式：");
+			lines.add(I18n.t("info.parent", parent));
+			lines.add(I18n.t("info.how"));
 			for (String req : localizeAll(catalog.reqs())) {
 				lines.add("  · " + req);
 			}
@@ -75,20 +74,20 @@ public final class AdvancementInfo {
 
 		AdvancementHolder holder = resolve(mc, id);
 		if (holder == null) {
-			lines.add("正在向服务端查询这个成就…（如果一直没有结果，说明服务端没装模组或该成就不存在）");
+			lines.add(I18n.t("info.querying"));
 			return lines;
 		}
 		holder.value().display().ifPresent(display -> {
-			lines.add("标题：" + display.title().getString());
+			lines.add(I18n.t("info.title", display.title().getString()));
 			String description = display.description().getString();
 			if (!description.isBlank()) {
-				lines.add("描述：" + description);
+				lines.add(I18n.t("info.desc", description));
 			}
 		});
-		lines.add("前置成就：" + AdvancementDescriber.parentTitle(holder,
-				key -> mc.getConnection() == null ? null : mc.getConnection().getAdvancements().get(key)));
-		lines.add("达成方式：");
-		for (String req : localizeAll(AdvancementDescriber.requirements(holder))) {
+		lines.add(I18n.t("info.parent", AdvancementDescriber.parentTitle(holder,
+				key -> mc.getConnection() == null ? null : mc.getConnection().getAdvancements().get(key), I18n.lang())));
+		lines.add(I18n.t("info.how"));
+		for (String req : localizeAll(AdvancementDescriber.requirements(holder, I18n.lang()))) {
 			lines.add("  · " + req);
 		}
 		return lines;
@@ -171,13 +170,13 @@ public final class AdvancementInfo {
 	private static String blockName(String id) {
 		try {
 			var block = BuiltInRegistries.BLOCK.getValue(Identifier.parse(id));
-			return block == null ? id : block.getName().getString();
+			if (block == null) {
+				return id;
+			}
+			String name = LangResources.translate(block.getDescriptionId());
+			return name != null ? name : block.getName().getString();
 		} catch (Exception e) {
 			return id;
 		}
-	}
-
-	static String lower(String s) {
-		return s == null ? "" : s.toLowerCase(Locale.ROOT);
 	}
 }

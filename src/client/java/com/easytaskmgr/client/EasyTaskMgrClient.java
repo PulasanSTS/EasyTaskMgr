@@ -2,6 +2,7 @@ package com.easytaskmgr.client;
 
 import com.easytaskmgr.EasyTaskMgr;
 import com.easytaskmgr.config.ModConfig;
+import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.task.TaskStore;
 import com.easytaskmgr.client.ui.ConfigScreen;
 import com.easytaskmgr.client.ui.QuickAddScreen;
@@ -18,10 +19,12 @@ import net.minecraft.client.Minecraft;
 public class EasyTaskMgrClient implements ClientModInitializer {
 	private static int saveTimer;
 	private static int shareTimer;
+	private static int tickCounter;
 
 	@Override
 	public void onInitializeClient() {
 		ModConfig.get().load();
+		Language.apply();
 		TaskStore.get().load();
 		Keybinds.register();
 		ClientNet.register();
@@ -66,7 +69,7 @@ public class EasyTaskMgrClient implements ClientModInitializer {
 			ModConfig cfg = ModConfig.get();
 			cfg.hudHidden = !cfg.hudHidden;
 			cfg.save();
-			ClientTasks.toast(cfg.hudHidden ? "HUD 已隐藏" : "HUD 已显示");
+			ClientTasks.toast(cfg.hudHidden ? I18n.t("notify.hud.hidden") : I18n.t("notify.hud.shown"));
 		}
 
 		while (Keybinds.HUD_INTERACT.consumeClick()) {
@@ -76,10 +79,10 @@ public class EasyTaskMgrClient implements ClientModInitializer {
 			ModConfig.get().save();
 			if (next) {
 				mc.mouseHandler.releaseMouse();
-				ClientTasks.toast("HUD 交互：点击普通任务完成，按 V 退出");
+				ClientTasks.toast(I18n.t("notify.interact.on"));
 			} else {
 				mc.mouseHandler.grabMouse();
-				ClientTasks.toast("已退出 HUD 交互");
+				ClientTasks.toast(I18n.t("notify.interact.off"));
 			}
 		}
 		if (TaskHud.isInteractive() && mc.gui.screen() == null && mc.mouseHandler.isMouseGrabbed()) {
@@ -91,6 +94,9 @@ public class EasyTaskMgrClient implements ClientModInitializer {
 		}
 
 		ClientTasks.tick(mc);
+		if (tickCounter++ % 20 == 0) {
+			Language.apply();
+		}
 
 		if (++saveTimer >= 100) { // 5 秒
 			saveTimer = 0;

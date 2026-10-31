@@ -1,5 +1,7 @@
 package com.easytaskmgr.task;
 
+import com.easytaskmgr.i18n.I18n;
+
 import java.util.UUID;
 
 /**
@@ -20,7 +22,7 @@ public class Task {
 
 	public TaskType type = TaskType.NORMAL;
 
-	/** COLLECT/CRAFT: 物品 id；ADVANCEMENT: 成就 id。 */
+	/** COLLECT: 物品 id；ADVANCEMENT: 成就 id。 */
 	public String target = "";
 	public int targetCount = 1;
 
@@ -34,6 +36,12 @@ public class Task {
 	/** TIMER 配置。 */
 	public TimerMode timerMode = TimerMode.ON_JOIN;
 	public int intervalMinutes = 30;
+	/** 游戏内时间提醒：小时（0-23）、分钟（0-59）、每 N 个游戏日。 */
+	public int gameHour = 6;
+	public int gameMinute = 0;
+	public int gameDayInterval = 1;
+	/** 上一次触发游戏时间提醒的游戏日，避免同一天重复触发。 */
+	public long lastGameDay = -1L;
 
 	/** 触发时额外提示的文案，可为空。 */
 	public String remindText = "";
@@ -85,9 +93,16 @@ public class Task {
 	/** 进度描述，例如 {@code 32/64}。没有进度的类型返回 null。 */
 	public String progressText() {
 		return switch (type) {
-			case COLLECT, CRAFT -> Math.min(progress, targetCount) + "/" + targetCount;
-			case ADVANCEMENT, COORDINATE -> triggered ? "已到达" : null;
-			case TIMER -> timerMode == TimerMode.INTERVAL ? "每 " + intervalMinutes + " 分钟" : "上线时";
+			case COLLECT -> Math.min(progress, targetCount) + "/" + targetCount;
+			case ADVANCEMENT, COORDINATE -> triggered ? I18n.t("task.progress.reached") : null;
+			case TIMER -> switch (timerMode) {
+				case ON_JOIN -> I18n.t("task.progress.join");
+				case EVERY_JOIN -> I18n.t("task.progress.everyJoin");
+				case INTERVAL -> I18n.t("task.progress.interval", intervalMinutes);
+				case GAME_TIME -> gameDayInterval <= 1
+						? I18n.t("task.progress.gameTimeDaily", String.format("%02d:%02d", gameHour, gameMinute))
+						: I18n.t("task.progress.gameTime", gameDayInterval, String.format("%02d:%02d", gameHour, gameMinute));
+			};
 			case NORMAL -> null;
 		};
 	}
@@ -108,6 +123,9 @@ public class Task {
 		t.radius = radius;
 		t.timerMode = timerMode;
 		t.intervalMinutes = intervalMinutes;
+		t.gameHour = gameHour;
+		t.gameMinute = gameMinute;
+		t.gameDayInterval = gameDayInterval;
 		t.remindText = remindText;
 		t.progress = progress;
 		t.triggered = triggered;
@@ -149,5 +167,8 @@ public class Task {
 		if (containerCount < 0) {
 			containerCount = 0;
 		}
+		gameHour = Math.max(0, Math.min(23, gameHour));
+		gameMinute = Math.max(0, Math.min(59, gameMinute));
+		gameDayInterval = Math.max(1, gameDayInterval);
 	}
 }

@@ -3,7 +3,7 @@
 	"id": "easytaskmgr",
 	"version": "${version}",
 	"name": "EasyTaskMgr",
-	"description": "游戏内待办清单：快捷键快速记录、HUD 常驻、物品 / 成就 / 合成 / 坐标自动触发提醒，联机可与队友共享待办。",
+	"description": "游戏内待办清单：快捷键快速记录、HUD 常驻、物品 / 成就 / 坐标 / 定时提醒自动触发，联机可与队友共享待办。",
 	"authors": [
 		"EasyTaskMgr"
 	],
@@ -19,7 +19,6 @@
 		]
 	},
 	"mixins": [
-		"easytaskmgr.mixins.json",
 		{
 			"config": "easytaskmgr.client.mixins.json",
 			"environment": "client"
