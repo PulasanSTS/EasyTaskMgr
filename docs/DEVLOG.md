@@ -7,6 +7,31 @@
 
 ---
 
+## 2026-10-31 · 第十轮：修 CI（gradlew 权限位 + 本机 JDK 路径）
+
+### 1. 12:40 修复：CI 报 `./gradlew: Permission denied`（exit 126）
+
+- **原因**：文件是从 Windows 用 robocopy 同步进仓库的，NTFS 不携带可执行位，
+  Git 把 `gradlew` 记录成了 `100644`；GitHub Actions 的 Linux runner 执行 `./gradlew`
+  需要执行权限，于是直接 126。
+- **修法**：`git update-index --chmod=+x gradlew` 把 index 里的模式改成 `100755`；
+  同时在 workflow 里加一步 `chmod +x ./gradlew` 兜底，避免以后从 Windows 重新上传再次踩坑。
+- **文件**：`gradlew`（模式变更）、`.github/workflows/build.yml`；提交 `4de2ab9`（已推送）。
+
+### 2. 13:20 修复：CI 报 `org.gradle.java.home` 无效
+
+- **原因**：`gradle.properties` 里写死了本机路径
+  `D:/Program Files/Jdk/zulu25.32.21-ca-jdk25.0.2-win_x64`，
+  Linux runner 上当然不存在，Gradle 直接拒绝启动。
+- **修法**：
+  - 删掉 `org.gradle.java.home`，改成注释说明：**本机用 `JAVA_HOME` 指向 JDK 25，CI 由 `setup-java` 提供**；
+  - `settings.gradle` 与 `build.gradle` 在镜像之后补上官方 Fabric Maven
+    （`https://maven.fabricmc.net/`）作为海外网络的兜底，Gradle 按顺序取第一个命中的仓库。
+- **文件**：`gradle.properties`、`settings.gradle`、`build.gradle`；提交 `6c3eb13`。
+- **本机验证**：删掉该属性后 `gradlew build` 仍然 `BUILD SUCCESSFUL`（JAVA_HOME 已指向 Zulu 25）。
+
+---
+
 ## 2026-10-31 · 第九轮：许可证改为 MIT
 
 ### 1. 11:20 修改：CC0-1.0 → MIT

@@ -5,10 +5,14 @@ plugins {
 
 repositories {
 	// Loom 会自己加入 Minecraft / Mojang 库的仓库；
-	// 这里补 Fabric Maven 的国内镜像（官方地址在本机网络下会卡在 TLS 握手）。
+	// 国内镜像优先；官方 Fabric Maven 作为 CI/海外网络的兜底。
 	maven {
 		name = 'FabricMirror'
 		url = 'https://repository.hanbings.io/proxy/'
+	}
+	maven {
+		name = 'Fabric'
+		url = 'https://maven.fabricmc.net/'
 	}
 }
 
