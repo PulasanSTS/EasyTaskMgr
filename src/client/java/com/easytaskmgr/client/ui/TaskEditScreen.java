@@ -277,6 +277,22 @@ public class TaskEditScreen extends Screen {
 
 	private void save() {
 		captureFields();
+		if (task.visibility > 0) {
+			if (!ClientShared.available()) {
+				ClientTasks.toast(I18n.t("share.noServer"));
+				return;
+			}
+			String sharedText = task.text == null ? "" : task.text.trim();
+			if (sharedText.isEmpty()) {
+				ClientTasks.toast(I18n.t("edit.empty"));
+				return;
+			}
+			task.text = sharedText;
+			ClientShared.publish(task);
+			ClientTasks.toast(I18n.t("share.published"));
+			onClose();
+			return;
+		}
 		String text = task.text == null ? "" : task.text.trim();
 		if (text.isEmpty()) {
 			ClientTasks.toast(I18n.t("edit.empty"));
