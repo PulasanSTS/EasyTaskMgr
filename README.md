@@ -216,14 +216,6 @@ src/client/java/com/easytaskmgr/client/
 - [ ] 收集任务支持「从零开始计数」模式
 - [ ] 成就前置条件展开成完整条件树
 
-## 发布到 GitHub
-
-从建仓库、上传源码到发 Release 的完整步骤（含协议选择、是否必须装 Git）见
-[docs/GITHUB.md](docs/GITHUB.md)。
-
-## 开发日志
-
-每一步改动、实现思路和踩坑记录见 [docs/DEVLOG.md](docs/DEVLOG.md)。
 
 ## 许可证
 
