@@ -20,7 +20,13 @@ public final class ClientShared {
 	private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
 
 	public record Entry(String id, String owner, Task task, boolean done, int visibility,
-			boolean claimed, int claims, boolean mine, boolean canClaim) {
+			boolean claimed, int claims, boolean mine, boolean canClaim,
+			boolean all, boolean doneByMe, int claimsDone) {
+
+		/** 「全部认领者」模式：自己已完成，还在等别人。 */
+		public boolean waitingOthers() {
+			return all && doneByMe && !done;
+		}
 	}
 
 	private static List<Entry> entries = List.of();
@@ -66,7 +72,8 @@ public final class ClientShared {
 				task.done = done;
 				parsed.add(new Entry(o.get("id").getAsString(), o.get("owner").getAsString(), task, done,
 						o.get("visibility").getAsInt(), o.get("claimed").getAsBoolean(),
-						o.get("claims").getAsInt(), o.get("mine").getAsBoolean(), o.get("canClaim").getAsBoolean()));
+						o.get("claims").getAsInt(), o.get("mine").getAsBoolean(), o.get("canClaim").getAsBoolean(),
+						bool(o, "all"), bool(o, "doneByMe"), integer(o, "claimsDone")));
 			}
 		} catch (Exception e) {
 			EasyTaskMgr.LOGGER.warn("解析共享任务快照失败", e);
@@ -75,8 +82,16 @@ public final class ClientShared {
 		EasyTaskMgr.LOGGER.info("收到共享任务快照：{} 条", parsed.size());
 	}
 
-	private static void send(String action, String id, String json, String target) {
-		if (ClientPlayNetworking.canSend(ShareActionC2S.TYPE)) {
+	/** 老版本服务端不会发新字段，缺字段时用默认值兜底。 */
+	private static boolean bool(JsonObject o, String key) {
+		return o.has(key) && o.get(key).getAsBoolean();
+	}
+
+	private static int integer(JsonObject o, String key) {
+		return o.has(key) ? o.get(key).getAsInt() : 0;
+	}
+
+	private static void send(String action, String id, String json, String target) {		if (ClientPlayNetworking.canSend(ShareActionC2S.TYPE)) {
 			ClientPlayNetworking.send(new ShareActionC2S(action, id, json, target));
 		}
 	}

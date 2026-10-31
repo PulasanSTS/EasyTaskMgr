@@ -46,8 +46,6 @@ public final class ModConfig {
 	public String language = "auto";
 	/** 完成 / 提醒时是否播放音效。 */
 	public boolean soundEnabled = true;
-	/** 多人共享总开关。 */
-	public boolean shareEnabled = true;
 
 	private static Path file() {
 		return FabricLoader.getInstance().getConfigDir().resolve("easytaskmgr.json");
@@ -100,7 +98,6 @@ public final class ModConfig {
 		ticksPerDay = o.ticksPerDay >= 2000 ? o.ticksPerDay : 24000;
 		language = (o.language != null && (o.language.equals("zh_cn") || o.language.equals("en_us"))) ? o.language : "auto";
 		soundEnabled = o.soundEnabled;
-		shareEnabled = o.shareEnabled;
 	}
 
 	private static int clamp(int v, int min, int max) {

@@ -114,11 +114,9 @@ public final class I18n {
 
 		// HUD
 		put("hud.title", "待办清单 %d", "Todos %d");
-		put("hud.teammates", "—— 队友 ——", "— Teammates —");
 		put("hud.hint", "点击任务即可完成 · 按 %s 退出", "Click a task to complete · %s to exit");
 		put("hud.more", "…还有 %d 条", "…and %d more");
 		put("hud.advancement", "成就 %s", "Advancement %s");
-		put("hud.containers", "（含容器）", " (incl. containers)");
 		put("hud.need", " · 需要：%s", " · needs: %s");
 		put("dir.front", "正前", "ahead");
 		put("dir.frontRight", "右前", "front-right");
@@ -157,7 +155,6 @@ public final class I18n {
 
 		// 列表
 		put("list.title", "待办列表", "Task list");
-		put("list.page", "第 %d / %d 页 · 共 %d 条", "Page %d / %d · %d tasks");
 		put("list.range", "%d-%d / 共 %d 条", "%d-%d of %d");
 		put("list.scrollHint", "滚轮滚动", "scroll with wheel");
 		put("list.empty", "还没有待办", "No tasks yet");
@@ -173,9 +170,16 @@ public final class I18n {
 		put("vis.shared", "共享", "Shared");
 		put("vis.special", "特殊共享", "Special");
 		put("share.published", "已发布共享任务", "Shared task published");
-		put("share.invited", "已邀请 %s 认领特殊共享任务", "Invited %s to your special tasks");
+		put("edit.mode", "完成条件：%s", "Completion: %s");
+		put("share.mode.any", "任一认领者", "any claimant");
+		put("share.mode.all", "所有认领者", "all claimants");
+		put("share.progress", "%d/%d 已完成", "%d/%d done");
+		put("share.waitOthers", "你已完成，等其他人完成", "You're done — waiting for others");
+		put("share.partialToast", "已记录你的完成（%d/%d）", "Your part is recorded (%d/%d)");
+		put("share.tagWaiting", "[待他人完成]", "[waiting others]");
+		put("share.invitedCount", "已邀请 %s 认领 %d 个特殊共享任务", "Invited %s to %d special task(s)");
+		put("share.inviteNone", "你没有特殊共享任务可邀请", "You have no special shared tasks to invite");
 		put("share.noServer", "服务端未安装本模组，共享功能不可用", "Server does not have the mod — sharing unavailable");
-		put("list.teammates", " · 队友 %d 条", " · %d from teammates");
 		put("list.donePrefix", "[已完成] ", "[Done] ");
 		put("list.footer", "%s 快速添加 · %s 列表 · %s 设置 · %s 隐藏 HUD",
 				"%s quick add · %s list · %s settings · %s hide HUD");
@@ -206,9 +210,6 @@ public final class I18n {
 		put("edit.presetDay", "白天 06:00", "Day 06:00");
 		put("edit.presetNight", "黑夜 19:00", "Night 19:00");
 		put("edit.gameTimeHint", "游戏内时间：小时 / 分钟 / 每 N 天", "In-game time: hour / minute / every N days");
-		put("edit.container", "容器计数：%s", "Containers: %s");
-		put("edit.requirements", "显示前置条件：%s", "Prerequisites: %s");
-		put("edit.reqHeader", "前置条件 / 达成方式", "Prerequisites / How to earn");
 		put("edit.empty", "内容不能为空", "Content cannot be empty");
 		put("edit.needItem", "请填写物品名", "Please enter an item name");
 		put("edit.needAdv", "请填写成就名", "Please enter an advancement name");
@@ -230,7 +231,6 @@ public final class I18n {
 		put("cfg.speed", "速度", "Speed");
 		put("cfg.team", "队友", "Teammates");
 		put("cfg.sound", "音效", "Sound");
-		put("cfg.share", "共享", "Sharing");
 		put("cfg.reset", "重置位置", "Reset position");
 		put("cfg.done", "完成", "Done");
 		put("cfg.language", "语言", "Language");

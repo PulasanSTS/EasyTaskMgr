@@ -3,6 +3,7 @@ package com.easytaskmgr;
 import com.easytaskmgr.advancement.AdvancementDescriber;
 import com.easytaskmgr.net.ShareActionC2S;
 import com.easytaskmgr.net.ShareSnapshotS2C;
+import com.easytaskmgr.share.ShareStore;
 import com.easytaskmgr.share.SharedTasks;
 import com.easytaskmgr.task.Task;
 import com.easytaskmgr.net.AdvancementDataS2C;
@@ -10,6 +11,7 @@ import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.net.AdvancementQueryC2S;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -67,19 +69,23 @@ public class EasyTaskMgr implements ModInitializer {
 						}
 						if (task != null) {
 							task.normalize();
-							SharedTasks.publish(player, task);
+							SharedTasks.publish(server, player, task);
 						}
 					}
-					case "claim" -> SharedTasks.claim(player, payload.id());
+					case "claim" -> SharedTasks.claim(server, player, payload.id());
 					case "invite" -> SharedTasks.invite(player, payload.id(), payload.target());
-					case "complete" -> SharedTasks.complete(player, payload.id());
+					case "complete" -> SharedTasks.complete(server, player, payload.id());
 					case "revoke" -> SharedTasks.revoke(player, payload.id());
 					default -> {
 					}
 				}
+				SharedTasks.saveIfDirty(server);
 				SharedTasks.broadcast(server);
 			});
 		});
+
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> ShareStore.load(server));
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> ShareStore.save(server));
 
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			if (ServerPlayNetworking.canSend(handler.player, ShareSnapshotS2C.TYPE)) {

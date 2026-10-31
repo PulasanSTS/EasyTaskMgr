@@ -1,6 +1,5 @@
 package com.easytaskmgr.client.ui;
 
-import com.easytaskmgr.client.ClientNet;
 import com.easytaskmgr.config.ModConfig;
 import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.task.Task;
@@ -101,12 +100,6 @@ public class ConfigScreen extends Screen {
 		addRenderableWidget(toggle(X0, toggleY + ROW_HEIGHT, "cfg.speed", cfg().showSpeed, v -> cfg().showSpeed = v));
 		addRenderableWidget(toggle(X0 + 88, toggleY + ROW_HEIGHT, "cfg.team", cfg().showTeammates, v -> cfg().showTeammates = v));
 		addRenderableWidget(toggle(X0, toggleY + ROW_HEIGHT * 2, "cfg.sound", cfg().soundEnabled, v -> cfg().soundEnabled = v));
-		addRenderableWidget(toggle(X0 + 88, toggleY + ROW_HEIGHT * 2, "cfg.share", cfg().shareEnabled, v -> {
-			cfg().shareEnabled = v;
-			if (!v) {
-				ClientNet.reset();
-			}
-		}));
 
 		int bottom = height - 34;
 		addRenderableWidget(Button.builder(Component.literal(I18n.t("cfg.reset")), b -> {
@@ -153,7 +146,6 @@ public class ConfigScreen extends Screen {
 			case "cfg.speed" -> cfg().showSpeed;
 			case "cfg.team" -> cfg().showTeammates;
 			case "cfg.sound" -> cfg().soundEnabled;
-			case "cfg.share" -> cfg().shareEnabled;
 			default -> false;
 		};
 	}

@@ -59,13 +59,23 @@ public class EasyTaskMgrClient implements ClientModInitializer {
 						.then(ClientCommands.literal("invite")
 								.then(ClientCommands.argument("player", StringArgumentType.word()).executes(ctx -> {
 									String name = StringArgumentType.getString(ctx, "player");
+									if (!ClientShared.available()) {
+										Notifier.warn(I18n.t("share.noServer"));
+										return 0;
+									}
+									int count = 0;
 									for (ClientShared.Entry entry : ClientShared.entries()) {
 										if (entry.mine() && entry.visibility() == 2) {
 											ClientShared.invite(entry.id(), name);
+											count++;
 										}
 									}
-									Notifier.info(I18n.t("share.invited", name));
-									return 1;
+									if (count == 0) {
+										Notifier.warn(I18n.t("share.inviteNone"));
+									} else {
+										Notifier.info(I18n.t("share.invitedCount", name, count));
+									}
+									return count;
 								})))));
 	}
 	private void onTick(Minecraft mc) {

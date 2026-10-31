@@ -64,6 +64,8 @@ public class Task {
 	public String owner = "";
 	/** 0 = 仅个人，1 = 共享，2 = 特殊共享（需邀请）。 */
 	public int visibility;
+	/** 共享任务的完成条件：false = 任一认领者完成即算完成，true = 所有认领者都要完成。 */
+	public boolean shareAll;
 	/** 客户端展示用：共享任务的服务端信息（不写入存档）。 */
 	public transient String shareOwnerName = "";
 	public transient boolean shareClaimed;

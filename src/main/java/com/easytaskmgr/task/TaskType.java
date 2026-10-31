@@ -8,17 +8,11 @@ import java.util.Locale;
  * 任务类型：普通任务，以及四种「游戏内触发」的高级任务 + 时间提醒。
  */
 public enum TaskType {
-	NORMAL("普通"),
-	COLLECT("收集物品"),
-	ADVANCEMENT("完成成就"),
-	COORDINATE("前往坐标"),
-	TIMER("时间提醒");
-
-	private final String label;
-
-	TaskType(String label) {
-		this.label = label;
-	}
+	NORMAL,
+	COLLECT,
+	ADVANCEMENT,
+	COORDINATE,
+	TIMER;
 
 	public String label() {
 		return I18n.t("type." + name().toLowerCase(Locale.ROOT));

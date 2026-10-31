@@ -31,8 +31,16 @@ public final class Notifier {
 		playChime(mc);
 	}
 
-	public static void remind(String message) {
+	/** 警告 / 失败提示：红色、不响铃。 */
+	public static void warn(String message) {
 		Minecraft mc = Minecraft.getInstance();
+		if (mc.player == null) {
+			return;
+		}
+		mc.player.sendSystemMessage(prefix().append(Component.literal(message).withStyle(ChatFormatting.RED)));
+	}
+
+	public static void remind(String message) {		Minecraft mc = Minecraft.getInstance();
 		if (mc.player == null) {
 			return;
 		}

@@ -61,6 +61,7 @@ public class TaskEditScreen extends Screen {
 	private int rowSuggest;
 	private int rowExtra;
 	private int rowRemind;
+	private int rowShare;
 	private int rowButtons;
 
 	public TaskEditScreen(Task task, boolean creating, Screen parent) {
@@ -174,8 +175,15 @@ public class TaskEditScreen extends Screen {
 			addRenderableWidget(Button.builder(visibilityLabel(), b -> {
 				captureFields();
 				task.visibility = (task.visibility + 1) % 3;
-				b.setMessage(visibilityLabel());
-			}).bounds(x0, rowExtra, 170, 18).build());
+				rebuildWidgets();
+			}).bounds(x0, rowShare, 148, 18).build());
+			if (task.visibility > 0) {
+				addRenderableWidget(Button.builder(shareModeLabel(), b -> {
+					captureFields();
+					task.shareAll = !task.shareAll;
+					b.setMessage(shareModeLabel());
+				}).bounds(x0 + 152, rowShare, 148, 18).build());
+			}
 		}
 
 		remindBox = addRenderableWidget(new EditBox(font, x0, rowRemind, CONTENT_WIDTH, 18, Component.literal(I18n.t("edit.remind"))));
@@ -190,16 +198,25 @@ public class TaskEditScreen extends Screen {
 	}
 
 	/**
-	 * 固定分区，保证标签（上一行）和输入框（下一行）互不重叠，总高压进 240px：
-	 * 内容 44-72 / 类型·优先级 72-90 / 目标 92-122 / 开关 128-146 / 附加提醒 148-178 / 按钮 190-210。
+	 * 从下往上排，窗口再矮也不会把按钮挤到屏幕外：
+	 * 内容 44-72 / 类型·优先级 72-90 / 目标 92-122 / 开关 128-146 /
+	 * 附加提醒（标签 + 输入框）/ 共享（可见性 + 完成条件）/ 保存·取消。
+	 *
+	 * <p>矮窗口（GUI 高 225 左右）也能完整显示；高窗口里各块自动下移，留白更均匀。
 	 */
 	private void layout() {
 		rowType = 72;
 		rowTarget = 104;
 		rowSuggest = rowTarget + 22;
 		rowExtra = 128;
-		rowRemind = 160;
-		rowButtons = Math.min(height - 26, 190);
+		rowButtons = height - 26;
+		rowShare = rowButtons - 24;
+		rowRemind = rowShare - 26;
+	}
+
+	private Component shareModeLabel() {
+		return Component.literal(I18n.t("edit.mode",
+				I18n.t(task.shareAll ? "share.mode.all" : "share.mode.any")));
 	}
 
 	private Component visibilityLabel() {
@@ -446,7 +463,10 @@ public class TaskEditScreen extends Screen {
 			case NORMAL -> graphics.text(font, I18n.t("edit.normalHint"), x0, rowTarget - 12, 0xFF80CBC4);
 		}
 
-		graphics.text(font, I18n.t("edit.remind"), x0, rowRemind - 12, 0xFFB0BEC5);
+		// 窗口很矮时这一行标签会和上面的开关行重叠，此时只靠输入框里的提示文字
+		if (rowRemind - 12 > rowExtra + 18) {
+			graphics.text(font, I18n.t("edit.remind"), x0, rowRemind - 12, 0xFFB0BEC5);
+		}
 		if (!ClientShared.available()) {
 			graphics.text(font, I18n.t("share.noServer"), x0, rowButtons - 12, 0xFF9E9E9E);
 		}
@@ -486,25 +506,6 @@ public class TaskEditScreen extends Screen {
 			graphics.text(font, "▲", suggestionX + suggestionWidth - 10, suggestionY - 12, 0xFF90A4AE);
 			graphics.text(font, counter, suggestionX + suggestionWidth - 60, suggestionY - 12, 0xFF90A4AE);
 			graphics.text(font, "▼", suggestionX + suggestionWidth - 10, bottom + 2, 0xFF90A4AE);
-		}
-	}
-
-	private void drawRequirements(GuiGraphicsExtractor graphics, int x0) {
-		List<String> lines = AdvancementInfo.describe(minecraft, task.target);
-		int y = 148;
-		int maxLines = Math.max(2, (rowButtons - y) / 10);
-		graphics.text(font, I18n.t("edit.reqHeader"), x0, y, 0xFFFFD54F);
-		y += 10;
-		int shown = 0;
-		for (String raw : lines) {
-			for (String line : TextWrap.wrap(font, raw, CONTENT_WIDTH)) {
-				if (shown >= maxLines - 1) {
-					return;
-				}
-				graphics.text(font, line, x0, y, 0xFF9FB3C8);
-				y += 10;
-				shown++;
-			}
 		}
 	}
 

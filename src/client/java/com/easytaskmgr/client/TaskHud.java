@@ -128,9 +128,13 @@ public final class TaskHud implements HudElement {
 				if (entry.done()) {
 					continue;
 				}
-				String tag = entry.mine() ? I18n.t("share.tagMine")
+				String tag = entry.waitingOthers() ? I18n.t("share.tagWaiting")
+						: entry.mine() ? I18n.t("share.tagMine")
 						: entry.claimed() ? I18n.t("share.tagClaimed")
 						: entry.canClaim() ? I18n.t("share.tagClaim") : I18n.t("share.tagLocked");
+				if (entry.all() && entry.claims() > 0) {
+					tag = tag + " " + I18n.t("share.progress", entry.claimsDone(), entry.claims());
+				}
 				for (String line : TextWrap.wrap(font, entry.owner() + " · " + entry.task().displayText() + " " + tag, maxWidth)) {
 					rows.add(new Row(line, entry.visibility() == 2 ? 0xFFFF80AB : 0xFF64B5F6, null));
 				}

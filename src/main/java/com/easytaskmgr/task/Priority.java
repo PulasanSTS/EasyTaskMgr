@@ -8,18 +8,16 @@ import java.util.Locale;
  * 任务优先级。数值越大越靠前，颜色用于 HUD / 列表显示。
  */
 public enum Priority {
-	LOW(0, "低", 0xFF9E9E9E),
-	NORMAL(1, "普通", 0xFFFFFFFF),
-	HIGH(2, "高", 0xFFFFC107),
-	URGENT(3, "紧急", 0xFFFF5252);
+	LOW(0, 0xFF9E9E9E),
+	NORMAL(1, 0xFFFFFFFF),
+	HIGH(2, 0xFFFFC107),
+	URGENT(3, 0xFFFF5252);
 
 	private final int weight;
-	private final String label;
 	private final int color;
 
-	Priority(int weight, String label, int color) {
+	Priority(int weight, int color) {
 		this.weight = weight;
-		this.label = label;
 		this.color = color;
 	}
 

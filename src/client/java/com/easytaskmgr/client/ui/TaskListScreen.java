@@ -68,25 +68,32 @@ public class TaskListScreen extends Screen {
 			}
 			Task task = tasks.get(index);
 			int y = LIST_TOP + i * ROW_HEIGHT;
-		addRenderableWidget(Button.builder(Component.literal(task.done ? "✔" : "□"), b -> {
 			ClientShared.Entry shared = ClientShared.find(task.id);
-			if (shared != null) {
-				if (shared.canClaim()) {
-					ClientShared.claim(shared.id());
-					ClientTasks.toast(I18n.t("share.claimedToast", task.displayText()));
-				} else if (shared.mine() || shared.claimed()) {
-					ClientShared.complete(shared.id());
-					ClientTasks.toast(I18n.t("share.completedToast", task.displayText()));
+			String mark = task.done ? "✔" : shared != null && shared.waitingOthers() ? "◐" : "□";
+			addRenderableWidget(Button.builder(Component.literal(mark), b -> {
+				if (shared != null) {
+					if (shared.canClaim()) {
+						ClientShared.claim(shared.id());
+						ClientTasks.toast(I18n.t("share.claimedToast", task.displayText()));
+					} else if (shared.waitingOthers()) {
+						ClientTasks.toast(I18n.t("share.waitOthers"));
+					} else if (shared.mine() || shared.claimed()) {
+						ClientShared.complete(shared.id());
+						boolean partial = shared.all() && !shared.mine()
+								&& shared.claimsDone() + 1 < shared.claims();
+						ClientTasks.toast(partial
+								? I18n.t("share.partialToast", shared.claimsDone() + 1, shared.claims())
+								: I18n.t("share.completedToast", task.displayText()));
+					}
+				} else if (task.done) {
+					TaskStore.get().toggleDone(task);
+					TaskStore.get().save();
+				} else {
+					ClientTasks.finish(task);
 				}
-			} else if (task.done) {
-				TaskStore.get().toggleDone(task);
-				TaskStore.get().save();
-			} else {
-				ClientTasks.finish(task);
-			}
-			ClientNet.markDirty();
-			rebuildWidgets();
-		}).bounds(cx - 210, y, 20, 20).build());
+				ClientNet.markDirty();
+				rebuildWidgets();
+			}).bounds(cx - 210, y, 20, 20).build());
 
 			addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.edit")), b -> {
 				if (minecraft != null) {
@@ -181,7 +188,7 @@ public class TaskListScreen extends Screen {
 				graphics.text(font, lines.get(l), cx - 184, y + 2 + l * 11, color);
 			}
 
-			String detail = detailOf(task);
+			String detail = sharedEntry == null ? detailOf(task) : sharedDetail(sharedEntry, task);
 			if (detail != null && lines.size() <= 2) {
 				graphics.text(font, TextWrap.clip(font, detail, 90), cx + 40, y + 2, 0xFF9FB3C8);
 			}
@@ -220,6 +227,17 @@ public class TaskListScreen extends Screen {
 			case ADVANCEMENT -> I18n.t("type.advancement");
 			case COORDINATE -> String.format("%.0f, %.0f, %.0f", task.x, task.y, task.z);
 		};
+	}
+
+	/** 共享任务的第二列：优先显示「全部认领者」模式的进度，其次退回普通详情。 */
+	private String sharedDetail(ClientShared.Entry entry, Task task) {
+		if (entry.waitingOthers()) {
+			return I18n.t("share.tagWaiting");
+		}
+		if (entry.all() && entry.claims() > 0) {
+			return I18n.t("share.progress", entry.claimsDone(), entry.claims());
+		}
+		return detailOf(task);
 	}
 
 	@Override
