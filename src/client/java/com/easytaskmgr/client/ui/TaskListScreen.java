@@ -63,8 +63,12 @@ public class TaskListScreen extends Screen {
 			Task task = tasks.get(index);
 			int y = LIST_TOP + i * ROW_HEIGHT;
 			addRenderableWidget(Button.builder(Component.literal(task.done ? "✔" : "□"), b -> {
-				TaskStore.get().toggleDone(task);
-				TaskStore.get().save();
+				if (task.done) {
+					TaskStore.get().toggleDone(task);
+					TaskStore.get().save();
+				} else {
+					ClientTasks.finish(task);
+				}
 				ClientNet.markDirty();
 				rebuildWidgets();
 			}).bounds(cx - 210, y, 20, 20).build());
