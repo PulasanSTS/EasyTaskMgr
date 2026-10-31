@@ -132,7 +132,7 @@ public final class TaskHud implements HudElement {
 						: entry.claimed() ? I18n.t("share.tagClaimed")
 						: entry.canClaim() ? I18n.t("share.tagClaim") : I18n.t("share.tagLocked");
 				for (String line : TextWrap.wrap(font, entry.owner() + " · " + entry.task().displayText() + " " + tag, maxWidth)) {
-					rows.add(new Row(line, 0xFF64B5F6, null));
+					rows.add(new Row(line, entry.visibility() == 2 ? 0xFFFF80AB : 0xFF64B5F6, null));
 				}
 			}
 		}

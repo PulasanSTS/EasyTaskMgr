@@ -42,6 +42,11 @@ public class TaskListScreen extends Screen {
 		if (showDone) {
 			list.addAll(TaskStore.get().completed());
 		}
+		for (ClientShared.Entry entry : ClientShared.entries()) {
+			if (!entry.done()) {
+				list.add(entry.task());
+			}
+		}
 		return list;
 	}
 
@@ -63,16 +68,25 @@ public class TaskListScreen extends Screen {
 			}
 			Task task = tasks.get(index);
 			int y = LIST_TOP + i * ROW_HEIGHT;
-			addRenderableWidget(Button.builder(Component.literal(task.done ? "✔" : "□"), b -> {
-				if (task.done) {
-					TaskStore.get().toggleDone(task);
-					TaskStore.get().save();
-				} else {
-					ClientTasks.finish(task);
+		addRenderableWidget(Button.builder(Component.literal(task.done ? "✔" : "□"), b -> {
+			ClientShared.Entry shared = ClientShared.find(task.id);
+			if (shared != null) {
+				if (shared.canClaim()) {
+					ClientShared.claim(shared.id());
+					ClientTasks.toast(I18n.t("share.claimedToast", task.displayText()));
+				} else if (shared.mine() || shared.claimed()) {
+					ClientShared.complete(shared.id());
+					ClientTasks.toast(I18n.t("share.completedToast", task.displayText()));
 				}
-				ClientNet.markDirty();
-				rebuildWidgets();
-			}).bounds(cx - 210, y, 20, 20).build());
+			} else if (task.done) {
+				TaskStore.get().toggleDone(task);
+				TaskStore.get().save();
+			} else {
+				ClientTasks.finish(task);
+			}
+			ClientNet.markDirty();
+			rebuildWidgets();
+		}).bounds(cx - 210, y, 20, 20).build());
 
 			addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.edit")), b -> {
 				if (minecraft != null) {
@@ -156,7 +170,10 @@ public class TaskListScreen extends Screen {
 			Task task = tasks.get(index);
 			int y = LIST_TOP + i * ROW_HEIGHT;
 			boolean isShared = ClientShared.find(task.id) != null;
-			int color = task.done ? 0xFF757575 : isShared ? 0xFF64B5F6 : task.priority().color();
+			ClientShared.Entry sharedEntry = ClientShared.find(task.id);
+			int color = task.done ? 0xFF757575
+					: sharedEntry == null ? task.priority().color()
+					: sharedEntry.visibility() == 2 ? 0xFFFF80AB : 0xFF64B5F6;
 			String prefix = task.done ? I18n.t("list.donePrefix") : "[" + task.priority().label() + "] ";
 			List<String> lines = TextWrap.wrap(font, prefix + task.displayText(), TEXT_WIDTH);
 			int shown = Math.min(2, lines.size());
