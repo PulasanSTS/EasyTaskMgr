@@ -115,7 +115,7 @@ public final class I18n {
 		// HUD
 		put("hud.title", "待办清单 %d", "Todos %d");
 		put("hud.teammates", "—— 队友 ——", "— Teammates —");
-		put("hud.hint", "点击任务即可完成 · 按 V 退出", "Click a task to complete · V to exit");
+		put("hud.hint", "点击任务即可完成 · 按 %s 退出", "Click a task to complete · %s to exit");
 		put("hud.more", "…还有 %d 条", "…and %d more");
 		put("hud.advancement", "成就 %s", "Advancement %s");
 		put("hud.containers", "（含容器）", " (incl. containers)");
@@ -160,11 +160,11 @@ public final class I18n {
 		put("list.page", "第 %d / %d 页 · 共 %d 条", "Page %d / %d · %d tasks");
 		put("list.range", "%d-%d / 共 %d 条", "%d-%d of %d");
 		put("list.scrollHint", "滚轮滚动", "scroll with wheel");
-		put("list.empty", "还没有待办，按 B 添加", "No tasks yet — press B to add one");
+		put("list.empty", "还没有待办", "No tasks yet");
 		put("list.teammates", " · 队友 %d 条", " · %d from teammates");
 		put("list.donePrefix", "[已完成] ", "[Done] ");
-		put("list.footer", "B 快速添加 · N 列表 · K 设置 · H 隐藏 HUD",
-				"B add · N list · K settings · H hide HUD");
+		put("list.footer", "%s 快速添加 · %s 列表 · %s 设置 · %s 隐藏 HUD",
+				"%s quick add · %s list · %s settings · %s hide HUD");
 
 		// 编辑
 		put("edit.new", "新建待办", "New task");

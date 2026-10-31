@@ -1,6 +1,8 @@
 package com.easytaskmgr.client.ui;
 
 import com.easytaskmgr.client.ClientNet;
+import com.easytaskmgr.client.ClientTasks;
+import com.easytaskmgr.client.Keybinds;
 import com.easytaskmgr.client.TextWrap;
 import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.task.Task;
@@ -178,7 +180,11 @@ public class TaskListScreen extends Screen {
 			graphics.fill(barX, thumbTop, barX + 3, thumbTop + thumbHeight, 0xAAFFD54F);
 		}
 
-		graphics.text(font, I18n.t("list.footer"), 6, height - 12, 0xFF78909C);
+		graphics.text(font, I18n.t("list.footer",
+				Keybinds.QUICK_ADD.getTranslatedKeyMessage().getString(),
+				Keybinds.OPEN_LIST.getTranslatedKeyMessage().getString(),
+				Keybinds.OPEN_CONFIG.getTranslatedKeyMessage().getString(),
+				Keybinds.TOGGLE_HUD.getTranslatedKeyMessage().getString()), 6, height - 12, 0xFF78909C);
 
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}

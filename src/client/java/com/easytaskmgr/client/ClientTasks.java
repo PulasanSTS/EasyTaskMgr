@@ -279,6 +279,11 @@ public final class ClientTasks {
 		return task.displayText();
 	}
 
+	/** 供 HUD / 列表点击完成时调用：统一走这里，附加提醒才会一起输出。 */
+	public static void finish(Task task) {
+		complete(task, null);
+	}
+
 	private static void complete(Task task, String detail) {
 		if (task.done) {
 			return;

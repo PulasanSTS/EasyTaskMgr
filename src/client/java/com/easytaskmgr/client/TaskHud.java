@@ -60,7 +60,7 @@ public final class TaskHud implements HudElement {
 					if (task.done || task.remote) {
 						return false;
 					}
-					TaskStore.get().complete(task);
+					ClientTasks.finish(task);
 					TaskStore.get().save();
 					ClientNet.markDirty();
 					ClientTasks.toast("✓ " + I18n.t("notify.done", task.displayText()));
@@ -125,7 +125,7 @@ public final class TaskHud implements HudElement {
 			}
 		}
 		if (interactive) {
-			rows.add(new Row(I18n.t("hud.hint"), 0xFFFFD54F, null));
+			rows.add(new Row(I18n.t("hud.hint", Keybinds.HUD_INTERACT.getTranslatedKeyMessage().getString()), 0xFFFFD54F, null));
 		}
 
 		String header = I18n.t("hud.title", active.size());
