@@ -4,8 +4,10 @@ plugins {
 }
 
 repositories {
-	// Loom 会自己加入 Minecraft / Mojang 库的仓库；
-	// 国内镜像优先；官方 Fabric Maven 作为 CI/海外网络的兜底。
+	// 顺序与 settings.gradle 保持一致：Central → 镜像 → 官方 → Mojang 库。
+	// CI 上镜像对部分 Central 构件会 404，Central 放第一位可避免解析中断；
+	// 本机则由镜像提供 Fabric 构件（直连 maven.fabricmc.net 不稳定）。
+	mavenCentral()
 	maven {
 		name = 'FabricMirror'
 		url = 'https://repository.hanbings.io/proxy/'
@@ -13,6 +15,10 @@ repositories {
 	maven {
 		name = 'Fabric'
 		url = 'https://maven.fabricmc.net/'
+	}
+	maven {
+		name = 'MinecraftLibraries'
+		url = 'https://libraries.minecraft.net/'
 	}
 }
 

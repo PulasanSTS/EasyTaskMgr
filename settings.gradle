@@ -1,8 +1,11 @@
 pluginManagement {
 	repositories {
-		// 国内镜像：反向代理 maven.fabricmc.net（本机直连会卡在 TLS 握手）。
-		// 官方地址放在后面兜底：GitHub Actions 等海外网络走官方，
-		// Gradle 会按顺序使用第一个能解析到该构件的仓库。
+		// 顺序很重要：
+		// 1) Maven Central 放第一位——CI 上镜像对 gson/asm 等构件会 404，
+		//    而 Gradle 遇到 404 会继续尝试下一个仓库；
+		// 2) 镜像排第二，本机直连 maven.fabricmc.net 不稳定时由它提供 Fabric 构件；
+		// 3) 官方 Fabric 与 Mojang 库兜底；4) 插件门户。
+		mavenCentral()
 		maven {
 			name = 'FabricMirror'
 			url = 'https://repository.hanbings.io/proxy/'
@@ -11,7 +14,10 @@ pluginManagement {
 			name = 'Fabric'
 			url = 'https://maven.fabricmc.net/'
 		}
-		mavenCentral()
+		maven {
+			name = 'MinecraftLibraries'
+			url = 'https://libraries.minecraft.net/'
+		}
 		gradlePluginPortal()
 	}
 }
