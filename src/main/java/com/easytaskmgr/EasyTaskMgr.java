@@ -2,6 +2,7 @@ package com.easytaskmgr;
 
 import com.easytaskmgr.advancement.AdvancementDescriber;
 import com.easytaskmgr.net.ShareActionC2S;
+import com.easytaskmgr.net.ShareProgressC2S;
 import com.easytaskmgr.net.ShareSnapshotS2C;
 import com.easytaskmgr.share.ShareStore;
 import com.easytaskmgr.share.SharedTasks;
@@ -51,6 +52,7 @@ public class EasyTaskMgr implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		PayloadTypeRegistry.serverboundPlay().register(ShareActionC2S.TYPE, ShareActionC2S.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(ShareProgressC2S.TYPE, ShareProgressC2S.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(ShareSnapshotS2C.TYPE, ShareSnapshotS2C.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(AdvancementQueryC2S.TYPE, AdvancementQueryC2S.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(AdvancementDataS2C.TYPE, AdvancementDataS2C.CODEC);
@@ -86,6 +88,17 @@ public class EasyTaskMgr implements ModInitializer {
 
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> ShareStore.load(server));
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> ShareStore.save(server));
+
+		// 共享收集任务「共同完成」：客户端上报背包里见过的数量，服务端累加判定
+		ServerPlayNetworking.registerGlobalReceiver(ShareProgressC2S.TYPE, (payload, context) -> {
+			var player = context.player();
+			var server = context.server();
+			server.execute(() -> {
+				SharedTasks.progress(server, player, payload.id(), payload.count());
+				SharedTasks.saveIfDirty(server);
+				SharedTasks.broadcast(server);
+			});
+		});
 
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			if (ServerPlayNetworking.canSend(handler.player, ShareSnapshotS2C.TYPE)) {

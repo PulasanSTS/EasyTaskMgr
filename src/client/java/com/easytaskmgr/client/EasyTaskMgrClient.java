@@ -125,6 +125,8 @@ public class EasyTaskMgrClient implements ClientModInitializer {
 		ClientTasks.tick(mc);
 		if (tickCounter++ % 20 == 0) {
 			Language.apply();
+			// 共享任务的自动判定：收集任务数背包、坐标任务看距离、共同完成上报数量
+			ClientShared.tick(mc);
 		}
 
 		if (++saveTimer >= 100) { // 5 秒

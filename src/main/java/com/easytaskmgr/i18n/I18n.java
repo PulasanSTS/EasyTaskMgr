@@ -171,8 +171,11 @@ public final class I18n {
 		put("vis.special", "特殊共享", "Special");
 		put("share.published", "已发布共享任务", "Shared task published");
 		put("edit.mode", "完成条件：%s", "Completion: %s");
-		put("share.mode.any", "任一认领者", "any claimant");
-		put("share.mode.all", "所有认领者", "all claimants");
+		put("share.mode.anyClaimant", "任一认领者", "any claimant");
+		put("share.mode.allClaimants", "所有认领者", "all claimants");
+		put("share.mode.anyWithCreator", "任一（含发布者）", "any (incl. creator)");
+		put("share.mode.allWithCreator", "所有（含发布者）", "all (incl. creator)");
+		put("share.mode.combined", "共同完成（数量相加）", "combined count (only for collect tasks)");
 		put("share.progress", "%d/%d 已完成", "%d/%d done");
 		put("share.waitOthers", "你已完成，等其他人完成", "You're done — waiting for others");
 		put("share.partialToast", "已记录你的完成（%d/%d）", "Your part is recorded (%d/%d)");

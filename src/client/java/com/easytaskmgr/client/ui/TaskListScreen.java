@@ -4,6 +4,7 @@ import com.easytaskmgr.client.ClientNet;
 import com.easytaskmgr.client.ClientShared;
 import com.easytaskmgr.client.ClientTasks;
 import com.easytaskmgr.client.Keybinds;
+import com.easytaskmgr.client.TaskHud;
 import com.easytaskmgr.client.TextWrap;
 import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.task.Task;
@@ -69,21 +70,18 @@ public class TaskListScreen extends Screen {
 			Task task = tasks.get(index);
 			int y = LIST_TOP + i * ROW_HEIGHT;
 			ClientShared.Entry shared = ClientShared.find(task.id);
-			String mark = task.done ? "✔" : shared != null && shared.waitingOthers() ? "◐" : "□";
+			String mark = task.done ? "✔" : shared != null && shared.doneByMe() ? "◐" : "□";
 			addRenderableWidget(Button.builder(Component.literal(mark), b -> {
 				if (shared != null) {
 					if (shared.canClaim()) {
 						ClientShared.claim(shared.id());
 						ClientTasks.toast(I18n.t("share.claimedToast", task.displayText()));
-					} else if (shared.waitingOthers()) {
+					} else if (shared.iAmParticipant() && shared.doneByMe()) {
 						ClientTasks.toast(I18n.t("share.waitOthers"));
-					} else if (shared.mine() || shared.claimed()) {
+					} else if (shared.iAmParticipant()) {
+						boolean partial = ClientShared.willWaitOthers(shared);
 						ClientShared.complete(shared.id());
-						boolean partial = shared.all() && !shared.mine()
-								&& shared.claimsDone() + 1 < shared.claims();
-						ClientTasks.toast(partial
-								? I18n.t("share.partialToast", shared.claimsDone() + 1, shared.claims())
-								: I18n.t("share.completedToast", task.displayText()));
+						ClientShared.notifyProgress(shared, partial);
 					}
 				} else if (task.done) {
 					TaskStore.get().toggleDone(task);
@@ -176,19 +174,21 @@ public class TaskListScreen extends Screen {
 			}
 			Task task = tasks.get(index);
 			int y = LIST_TOP + i * ROW_HEIGHT;
-			boolean isShared = ClientShared.find(task.id) != null;
 			ClientShared.Entry sharedEntry = ClientShared.find(task.id);
 			int color = task.done ? 0xFF757575
 					: sharedEntry == null ? task.priority().color()
 					: sharedEntry.visibility() == 2 ? 0xFFFF80AB : 0xFF64B5F6;
 			String prefix = task.done ? I18n.t("list.donePrefix") : "[" + task.priority().label() + "] ";
-			List<String> lines = TextWrap.wrap(font, prefix + task.displayText(), TEXT_WIDTH);
+			int prefixWidth = font.width(prefix);
+			// 优先级前缀永远用优先级颜色（issue #8），正文才跟随共享任务的蓝 / 粉紫
+			graphics.text(font, prefix, cx - 184, y + 2, task.priority().color());
+			List<String> lines = TextWrap.wrap(font, task.displayText(), Math.max(60, TEXT_WIDTH - prefixWidth));
 			int shown = Math.min(2, lines.size());
 			for (int l = 0; l < shown; l++) {
-				graphics.text(font, lines.get(l), cx - 184, y + 2 + l * 11, color);
+				graphics.text(font, lines.get(l), cx - 184 + prefixWidth, y + 2 + l * 11, color);
 			}
 
-			String detail = sharedEntry == null ? detailOf(task) : sharedDetail(sharedEntry, task);
+			String detail = sharedEntry == null ? detailOf(task) : TaskHud.sharedDetail(minecraft, sharedEntry);
 			if (detail != null && lines.size() <= 2) {
 				graphics.text(font, TextWrap.clip(font, detail, 90), cx + 40, y + 2, 0xFF9FB3C8);
 			}
@@ -222,22 +222,15 @@ public class TaskListScreen extends Screen {
 	private String detailOf(Task task) {
 		return switch (task.type) {
 			case NORMAL -> null;
-			case COLLECT -> task.progressText();
+			case COLLECT -> {
+				String item = ClientTasks.itemName(task.target);
+				String progress = task.progressText();
+				yield progress == null || progress.isBlank() ? item : item + "  " + progress;
+			}
 			case TIMER -> task.timerMode.label();
-			case ADVANCEMENT -> I18n.t("type.advancement");
+			case ADVANCEMENT -> ClientTasks.advancementName(minecraft, task.target);
 			case COORDINATE -> String.format("%.0f, %.0f, %.0f", task.x, task.y, task.z);
 		};
-	}
-
-	/** 共享任务的第二列：优先显示「全部认领者」模式的进度，其次退回普通详情。 */
-	private String sharedDetail(ClientShared.Entry entry, Task task) {
-		if (entry.waitingOthers()) {
-			return I18n.t("share.tagWaiting");
-		}
-		if (entry.all() && entry.claims() > 0) {
-			return I18n.t("share.progress", entry.claimsDone(), entry.claims());
-		}
-		return detailOf(task);
 	}
 
 	@Override

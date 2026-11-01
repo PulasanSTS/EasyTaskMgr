@@ -209,8 +209,48 @@ public final class ClientTasks {
 		}
 	}
 
-	public static int countItem(Minecraft mc, String itemId) {
-		if (mc.player == null) {
+	/** 物品 id → 玩家语言下的物品名（issue #3：HUD 上要显示「要收集什么」）。 */
+	public static String itemName(String itemId) {
+		Identifier id = itemId == null ? null : Identifier.tryParse(itemId);
+		if (id == null) {
+			return itemId == null ? "" : itemId;
+		}
+		Item item = BuiltInRegistries.ITEM.getValue(id);
+		if (item == null || item == Items.AIR) {
+			return id.getPath();
+		}
+		try {
+			return new ItemStack(item).getHoverName().getString();
+		} catch (Exception e) {
+			return id.getPath();
+		}
+	}
+
+	/**
+	 * 成就 id → 玩家语言下的成就名（issue #5：HUD 不能显示注册名）。
+	 *
+	 * <p>优先用客户端自己的成就注册表（联机时服务端只同步有进度的成就，可能查不到），
+	 * 查不到再退回服务端下发的成就目录。
+	 */
+	public static String advancementName(Minecraft mc, String advancementId) {
+		if (advancementId == null || advancementId.isBlank()) {
+			return "";
+		}
+		Identifier id = Identifier.tryParse(AdvancementCatalog.normalize(advancementId));
+		if (id != null && mc.getConnection() != null) {
+			try {
+				var holder = mc.getConnection().getAdvancements().get(id);
+				if (holder != null) {
+					return net.minecraft.advancements.Advancement.name(holder).getString();
+				}
+			} catch (Exception ignored) {
+				// 回退到目录
+			}
+		}
+		return AdvancementCatalog.titleOf(advancementId);
+	}
+
+	public static int countItem(Minecraft mc, String itemId) {		if (mc.player == null) {
 			return 0;
 		}
 		Identifier id = Identifier.tryParse(itemId);

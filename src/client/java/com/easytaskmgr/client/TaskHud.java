@@ -22,16 +22,21 @@ import java.util.List;
  * <p>位置用屏幕百分比：{@code hudXPercent} 是右边缘、{@code hudYPercent} 是上边缘；
  * 面板宽度固定为配置值，长文本按宽度换行。
  *
- * <p>开启「HUD 交互」（V 键）后，鼠标会释放，点击普通任务即可直接完成。
+ * <p>开启「HUD 交互」（V 键）后，鼠标会释放，点击任务即可完成；
+ * 共享任务也支持点击（可认领 → 认领，已认领 → 上报完成）。
+ *
+ * <p>共享任务行保留「[优先级]」前缀，前缀永远是优先级颜色，正文用蓝色 / 粉紫区分共享类型，
+ * 下面再补一行详情（物品名 + 数量 / 坐标距离 / 完成进度）。
  */
 public final class TaskHud implements HudElement {
 	public static final Identifier ID = EasyTaskMgr.id("hud");
 
-	private record Row(String text, int color, String taskId) {
+	/** 一条要画的文本：prefix 用 prefixColor，正文用 color。 */
+	private record Row(String prefix, int prefixColor, String text, int color, String taskId, String sharedId) {
 	}
 
 	/** 可点击区域（渲染时记录，点击时命中测试）。 */
-	public record Hit(String taskId, int x0, int y0, int x1, int y1) {
+	public record Hit(String taskId, String sharedId, int x0, int y0, int x1, int y1) {
 	}
 
 	private static final List<Hit> HITS = new ArrayList<>();
@@ -48,25 +53,55 @@ public final class TaskHud implements HudElement {
 		interactive = value;
 	}
 
-	/** 点击 HUD：命中普通任务则标记完成。 */
 	public static int hitCount() {
 		return HITS.size();
 	}
 
+	private static Row row(String text, int color, String taskId) {
+		return new Row("", 0, text, color, taskId, null);
+	}
+
+	/** 点击 HUD：普通任务直接完成；共享任务按状态认领或上报完成。 */
 	public static boolean tryComplete(Minecraft mc, double x, double y) {
 		for (Hit hit : List.copyOf(HITS)) {
-			if (x >= hit.x0() && x <= hit.x1() && y >= hit.y0() && y <= hit.y1()) {
-				return TaskStore.get().byId(hit.taskId()).map(task -> {
-					if (task.done || task.remote) {
-						return false;
-					}
-					ClientTasks.finish(task);
-					TaskStore.get().save();
-					ClientNet.markDirty();
-					ClientTasks.toast("✓ " + I18n.t("notify.done", task.displayText()));
-					return true;
-				}).orElse(false);
+			if (x < hit.x0() || x > hit.x1() || y < hit.y0() || y > hit.y1()) {
+				continue;
 			}
+			if (hit.sharedId() != null) {
+				return handleSharedClick(hit.sharedId());
+			}
+			if (hit.taskId() == null) {
+				return false;
+			}
+			return TaskStore.get().byId(hit.taskId()).map(task -> {
+				if (task.done || task.remote) {
+					return false;
+				}
+				ClientTasks.finish(task);
+				TaskStore.get().save();
+				ClientNet.markDirty();
+				ClientTasks.toast("✓ " + I18n.t("notify.done", task.displayText()));
+				return true;
+			}).orElse(false);
+		}
+		return false;
+	}
+
+	private static boolean handleSharedClick(String id) {
+		ClientShared.Entry entry = ClientShared.find(id);
+		if (entry == null || entry.done()) {
+			return false;
+		}
+		if (entry.canClaim()) {
+			ClientShared.claim(id);
+			ClientTasks.toast(I18n.t("share.claimedToast", entry.task().displayText()));
+			return true;
+		}
+		if (entry.iAmParticipant() && !entry.doneByMe()) {
+			boolean partial = ClientShared.willWaitOthers(entry);
+			ClientShared.complete(id);
+			ClientShared.notifyProgress(entry, partial);
+			return true;
 		}
 		return false;
 	}
@@ -104,50 +139,58 @@ public final class TaskHud implements HudElement {
 
 		if (flash != null) {
 			for (String line : TextWrap.wrap(font, flash, maxWidth)) {
-				rows.add(new Row(line, 0xFF7CFF9B, null));
+				rows.add(row(line, 0xFF7CFF9B, null));
 			}
 		}
 		for (int i = 0; i < shown; i++) {
 			Task task = active.get(i);
 			List<String> titleLines = TextWrap.wrap(font, (i + 1) + ". " + task.displayText(), maxWidth);
 			for (int lineIndex = 0; lineIndex < titleLines.size(); lineIndex++) {
-				rows.add(new Row(titleLines.get(lineIndex), task.priority().color(), lineIndex == 0 ? task.id : null));
+				rows.add(row(titleLines.get(lineIndex), task.priority().color(), lineIndex == 0 ? task.id : null));
 			}
 			String detail = detail(mc, task);
 			if (detail != null && !detail.isBlank()) {
 				for (String line : TextWrap.wrap(font, detail, maxWidth - 10)) {
-					rows.add(new Row("  " + line, 0xFFB0BEC5, null));
+					rows.add(row("  " + line, 0xFFB0BEC5, null));
 				}
 			}
 		}
 		if (active.size() > shown) {
-			rows.add(new Row(I18n.t("hud.more", active.size() - shown), 0xFF90A4AE, null));
+			rows.add(row(I18n.t("hud.more", active.size() - shown), 0xFF90A4AE, null));
 		}
 		if (!shared.isEmpty()) {
 			for (ClientShared.Entry entry : shared) {
 				if (entry.done()) {
 					continue;
 				}
-				String tag = entry.waitingOthers() ? I18n.t("share.tagWaiting")
-						: entry.mine() ? I18n.t("share.tagMine")
-						: entry.claimed() ? I18n.t("share.tagClaimed")
-						: entry.canClaim() ? I18n.t("share.tagClaim") : I18n.t("share.tagLocked");
-				if (entry.all() && entry.claims() > 0) {
-					tag = tag + " " + I18n.t("share.progress", entry.claimsDone(), entry.claims());
+				Task task = entry.task();
+				String prefix = "[" + task.priority().label() + "] ";
+				int prefixWidth = font.width(prefix);
+				int color = entry.visibility() == 2 ? 0xFFFF80AB : 0xFF64B5F6;
+				List<String> titleLines = TextWrap.wrap(font,
+						entry.owner() + " · " + task.displayText() + " " + sharedTag(entry),
+						Math.max(60, maxWidth - prefixWidth));
+				for (int lineIndex = 0; lineIndex < titleLines.size(); lineIndex++) {
+					rows.add(new Row(lineIndex == 0 ? prefix : "", task.priority().color(), titleLines.get(lineIndex),
+							color, null, lineIndex == 0 ? entry.id() : null));
 				}
-				for (String line : TextWrap.wrap(font, entry.owner() + " · " + entry.task().displayText() + " " + tag, maxWidth)) {
-					rows.add(new Row(line, entry.visibility() == 2 ? 0xFFFF80AB : 0xFF64B5F6, null));
+				String detail = sharedDetail(mc, entry);
+				if (detail != null && !detail.isBlank()) {
+					for (String line : TextWrap.wrap(font, detail, Math.max(60, maxWidth - prefixWidth - 10))) {
+						rows.add(row("  " + line, 0xFFB0BEC5, null));
+					}
 				}
 			}
 		}
 		if (interactive) {
-			rows.add(new Row(I18n.t("hud.hint", Keybinds.HUD_INTERACT.getTranslatedKeyMessage().getString()), 0xFFFFD54F, null));
+			rows.add(row(I18n.t("hud.hint", Keybinds.HUD_INTERACT.getTranslatedKeyMessage().getString()),
+					0xFFFFD54F, null));
 		}
 
 		String header = I18n.t("hud.title", active.size());
 		int textWidth = font.width(header);
 		for (Row row : rows) {
-			textWidth = Math.max(textWidth, font.width(row.text()));
+			textWidth = Math.max(textWidth, font.width(row.prefix()) + font.width(row.text()));
 		}
 		int panelWidth = Math.min(maxWidth + 14, screenWidthSafe(mc));
 		int lineHeight = font.lineHeight + 1;
@@ -169,12 +212,46 @@ public final class TaskHud implements HudElement {
 		graphics.text(font, header, left + 6, top + 4, 0xFFFFD54F);
 		int y = top + headerHeight;
 		for (Row row : rows) {
-			graphics.text(font, row.text(), left + 6, y, row.color());
-			if (row.taskId() != null && interactive && isClickable(active, row.taskId())) {
-				HITS.add(new Hit(row.taskId(), left, y - 1, right, y + lineHeight));
+			int x = left + 6;
+			if (row.prefix() != null && !row.prefix().isEmpty()) {
+				graphics.text(font, row.prefix(), x, y, row.prefixColor());
+				x += font.width(row.prefix());
+			}
+			graphics.text(font, row.text(), x, y, row.color());
+			if (interactive) {
+				if (row.taskId() != null && isClickable(active, row.taskId())) {
+					HITS.add(new Hit(row.taskId(), null, left, y - 1, right, y + lineHeight));
+				} else if (row.sharedId() != null && isSharedClickable(row.sharedId())) {
+					HITS.add(new Hit(null, row.sharedId(), left, y - 1, right, y + lineHeight));
+				}
 			}
 			y += lineHeight;
 		}
+	}
+
+	/** 共享任务的状态标签，带进度（「全部」或「共同完成」时）。 */
+	private static String sharedTag(ClientShared.Entry entry) {
+		String tag = entry.waitingOthers() ? I18n.t("share.tagWaiting")
+				: entry.mine() ? I18n.t("share.tagMine")
+				: entry.claimed() ? I18n.t("share.tagClaimed")
+				: entry.canClaim() ? I18n.t("share.tagClaim") : I18n.t("share.tagLocked");
+		// 「共同完成」的进度已经在下一行（物品名 数量/目标）里了，这里不再重复
+		String progress = entry.combined() ? null : entry.progressText();
+		return progress == null || progress.isBlank() ? tag : tag + " " + progress;
+	}
+
+	/** 共享任务第二行：共同完成显示「物品名 总数/目标」，其它模式显示任务详情 + 完成人数。 */
+	public static String sharedDetail(Minecraft mc, ClientShared.Entry entry) {
+		Task task = entry.task();
+		if (entry.combined()) {
+			return ClientTasks.itemName(task.target) + "  " + entry.sumCount() + "/" + Math.max(1, entry.targetCount());
+		}
+		String base = detail(mc, task);
+		String progress = entry.progressText();
+		if (base == null || base.isBlank()) {
+			return progress;
+		}
+		return progress == null || progress.isBlank() ? base : base + " · " + progress;
 	}
 
 	private static boolean isClickable(List<Task> active, String taskId) {
@@ -184,6 +261,14 @@ public final class TaskHud implements HudElement {
 			}
 		}
 		return false;
+	}
+
+	private static boolean isSharedClickable(String id) {
+		ClientShared.Entry entry = ClientShared.find(id);
+		if (entry == null || entry.done()) {
+			return false;
+		}
+		return entry.canClaim() || (entry.iAmParticipant() && !entry.doneByMe());
 	}
 
 	private static int screenWidthSafe(Minecraft mc) {
@@ -201,16 +286,16 @@ public final class TaskHud implements HudElement {
 		graphics.fill(x1 - 1, y0, x1, y1, color);
 	}
 
-	/** 任务第二行：进度 / 坐标信息。 */
+	/** 任务第二行：进度 / 坐标信息 / 物品名 / 成就名。 */
 	public static String detail(Minecraft mc, Task task) {
 		ModConfig cfg = ModConfig.get();
 		return switch (task.type) {
-			case COLLECT -> task.progressText();
-			case ADVANCEMENT -> {
-				String base = I18n.t("hud.advancement", shortId(task.target));
-				String req = null;
-				yield req == null || req.isBlank() ? base : base + I18n.t("hud.need", req);
+			case COLLECT -> {
+				String item = ClientTasks.itemName(task.target);
+				String progress = task.progressText();
+				yield progress == null || progress.isBlank() ? item : item + "  " + progress;
 			}
+			case ADVANCEMENT -> I18n.t("hud.advancement", ClientTasks.advancementName(mc, task.target));
 			case TIMER -> task.progressText() + (task.remindText.isBlank() ? "" : " · " + task.remindText);
 			case COORDINATE -> coordinate(mc, task, cfg);
 			case NORMAL -> null;
@@ -287,18 +372,5 @@ public final class TaskHud implements HudElement {
 			d += 360.0;
 		}
 		return d;
-	}
-
-	private static String suffix(Task task) {
-		String progress = task.progressText();
-		return progress == null || progress.isBlank() ? "" : " " + progress;
-	}
-
-	private static String shortId(String id) {
-		if (id == null) {
-			return "";
-		}
-		int i = id.indexOf(':');
-		return i >= 0 ? id.substring(i + 1) : id;
 	}
 }

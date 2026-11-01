@@ -86,6 +86,10 @@ public class TaskEditScreen extends Screen {
 		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.type", task.type.label())), b -> {
 			captureFields();
 			task.type = task.type.next();
+			// 成就任务的多人支持已移除（issue #4）
+			if (task.type == TaskType.ADVANCEMENT) {
+				task.visibility = 0;
+			}
 			rebuildWidgets();
 		}).bounds(x0, rowType, 140, 18).build());
 
@@ -171,7 +175,7 @@ public class TaskEditScreen extends Screen {
 			}
 		}
 
-		if (ClientShared.available()) {
+		if (ClientShared.available() && task.type != TaskType.ADVANCEMENT) {
 			addRenderableWidget(Button.builder(visibilityLabel(), b -> {
 				captureFields();
 				task.visibility = (task.visibility + 1) % 3;
@@ -180,7 +184,7 @@ public class TaskEditScreen extends Screen {
 			if (task.visibility > 0) {
 				addRenderableWidget(Button.builder(shareModeLabel(), b -> {
 					captureFields();
-					task.shareAll = !task.shareAll;
+					task.shareMode = nextMode(task.shareMode, task.type);
 					b.setMessage(shareModeLabel());
 				}).bounds(x0 + 152, rowShare, 148, 18).build());
 			}
@@ -215,8 +219,25 @@ public class TaskEditScreen extends Screen {
 	}
 
 	private Component shareModeLabel() {
-		return Component.literal(I18n.t("edit.mode",
-				I18n.t(task.shareAll ? "share.mode.all" : "share.mode.any")));
+		return Component.literal(I18n.t("edit.mode", I18n.t(modeKey(task.shareMode))));
+	}
+
+	/** 完成条件的翻译键（0 任一 / 1 所有 / 2 任一含发布者 / 3 所有含发布者 / 4 共同完成）。 */
+	public static String modeKey(int mode) {
+		return switch (mode) {
+			case 0 -> "share.mode.anyClaimant";
+			case 1 -> "share.mode.allClaimants";
+			case 3 -> "share.mode.allWithCreator";
+			case 4 -> "share.mode.combined";
+			default -> "share.mode.anyWithCreator";
+		};
+	}
+
+	/** 收集任务多一个「共同完成」，其它类型在 0..3 之间循环。 */
+	private static int nextMode(int mode, TaskType type) {
+		int max = type == TaskType.COLLECT ? 4 : 3;
+		int next = mode < 0 ? 2 : mode + 1;
+		return next > max ? 0 : next;
 	}
 
 	private Component visibilityLabel() {
@@ -294,6 +315,17 @@ public class TaskEditScreen extends Screen {
 
 	private void save() {
 		captureFields();
+		// 成就任务的多人支持已移除（issue #4）
+		if (task.type == TaskType.ADVANCEMENT) {
+			task.visibility = 0;
+		}
+		// 只有收集任务能用「共同完成」，其它类型把非法值收回到默认
+		if (task.type != TaskType.COLLECT && task.shareMode == 4) {
+			task.shareMode = 2;
+		}
+		if (task.shareMode < 0) {
+			task.shareMode = 2;
+		}
 		if (task.visibility > 0) {
 			if (!ClientShared.available()) {
 				ClientTasks.toast(I18n.t("share.noServer"));

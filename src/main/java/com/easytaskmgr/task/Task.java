@@ -64,7 +64,12 @@ public class Task {
 	public String owner = "";
 	/** 0 = 仅个人，1 = 共享，2 = 特殊共享（需邀请）。 */
 	public int visibility;
-	/** 共享任务的完成条件：false = 任一认领者完成即算完成，true = 所有认领者都要完成。 */
+	/**
+	 * 共享任务完成条件：0 任一认领者 / 1 所有认领者 / 2 任一（含发布者）/ 3 所有（含发布者）/
+	 * 4 共同完成（收集任务，数量相加）。-1 表示「老存档没这个字段」，由 {@link #normalize()} 迁移。
+	 */
+	public int shareMode = -1;
+	/** 老版本（rc2 及以前）的完成条件开关，只用于迁移到 {@link #shareMode}。 */
 	public boolean shareAll;
 	/** 客户端展示用：共享任务的服务端信息（不写入存档）。 */
 	public transient String shareOwnerName = "";
@@ -140,6 +145,8 @@ public class Task {
 		t.triggered = triggered;
 		t.createdAt = createdAt;
 		t.completedAt = completedAt;
+		t.visibility = visibility;
+		t.shareMode = shareMode;
 		return t;
 	}
 
@@ -165,6 +172,11 @@ public class Task {
 		}
 		if (visibility < 0 || visibility > 2) {
 			visibility = 0;
+		}
+		// 老存档只有 shareAll 布尔值：true → 所有（含发布者），false → 任一（含发布者），
+		// 保持 rc2 的行为不变；新任务由编辑器写入 0..4 的显式值。
+		if (shareMode < 0 || shareMode > 4) {
+			shareMode = shareAll ? 3 : 2;
 		}
 		if (targetCount < 1) {
 			targetCount = 1;

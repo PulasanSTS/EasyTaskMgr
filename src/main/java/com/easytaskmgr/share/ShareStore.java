@@ -1,6 +1,7 @@
 package com.easytaskmgr.share;
 
 import com.easytaskmgr.EasyTaskMgr;
+import com.easytaskmgr.task.TaskType;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -28,8 +29,8 @@ import java.util.UUID;
 public final class ShareStore {
 	private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
 	private static final String FILE_NAME = "easytaskmgr_share.json";
-	/** 存档格式版本，将来改结构时用来做迁移。 */
-	private static final int VERSION = 1;
+	/** 存档格式版本 2：完成条件改成 {@code mode}（0..4），新增 {@code targetCount} / {@code maxCounts} / {@code type}。 */
+	private static final int VERSION = 2;
 
 	private ShareStore() {
 	}
@@ -68,8 +69,13 @@ public final class ShareStore {
 				entry.visibility = o.has("visibility") ? o.get("visibility").getAsInt() : 1;
 				entry.title = string(o, "title");
 				entry.labelKey = string(o, "labelKey");
-				entry.all = bool(o, "all");
 				entry.done = bool(o, "done");
+				// 版本 1 只有 all 布尔值，迁移到新的 0..4 完成条件
+				entry.mode = o.has("mode")
+						? SharedTasks.normalizeMode(o.get("mode").getAsInt())
+						: (bool(o, "all") ? SharedTasks.MODE_ALL_CREATOR : SharedTasks.MODE_ANY_CREATOR);
+				entry.targetCount = o.has("targetCount") ? Math.max(1, o.get("targetCount").getAsInt()) : 1;
+				entry.type = TaskType.byName(string(o, "type"));
 				for (JsonElement name : array(o, "invited")) {
 					entry.invited.add(name.getAsString());
 				}
@@ -78,6 +84,11 @@ public final class ShareStore {
 				}
 				for (JsonElement uuid : array(o, "completedBy")) {
 					entry.completedBy.add(UUID.fromString(uuid.getAsString()));
+				}
+				if (o.has("maxCounts") && o.get("maxCounts").isJsonObject()) {
+					for (var e : o.getAsJsonObject("maxCounts").entrySet()) {
+						entry.maxCounts.put(UUID.fromString(e.getKey()), e.getValue().getAsInt());
+					}
 				}
 				SharedTasks.BY_ID.put(entry.id, entry);
 				count++;
@@ -103,7 +114,9 @@ public final class ShareStore {
 			o.addProperty("visibility", entry.visibility);
 			o.addProperty("title", entry.title);
 			o.addProperty("labelKey", entry.labelKey);
-			o.addProperty("all", entry.all);
+			o.addProperty("mode", entry.mode);
+			o.addProperty("targetCount", entry.targetCount);
+			o.addProperty("type", entry.type.name());
 			o.addProperty("done", entry.done);
 			JsonArray invited = new JsonArray();
 			entry.invited.forEach(invited::add);
@@ -114,6 +127,9 @@ public final class ShareStore {
 			JsonArray completedBy = new JsonArray();
 			entry.completedBy.forEach(uuid -> completedBy.add(uuid.toString()));
 			o.add("completedBy", completedBy);
+			JsonObject maxCounts = new JsonObject();
+			entry.maxCounts.forEach((uuid, value) -> maxCounts.addProperty(uuid.toString(), value));
+			o.add("maxCounts", maxCounts);
 			tasks.add(o);
 		}
 		root.add("tasks", tasks);
