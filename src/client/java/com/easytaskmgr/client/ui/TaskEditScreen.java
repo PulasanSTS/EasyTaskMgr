@@ -86,8 +86,8 @@ public class TaskEditScreen extends Screen {
 		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.type", task.type.label())), b -> {
 			captureFields();
 			task.type = task.type.next();
-			// 成就任务的多人支持已移除（issue #4）
-			if (task.type == TaskType.ADVANCEMENT) {
+			// 成就 / 时间提醒任务的多人支持已移除（issue #4、#13）
+			if (task.type == TaskType.ADVANCEMENT || task.type == TaskType.TIMER) {
 				task.visibility = 0;
 			}
 			rebuildWidgets();
@@ -175,7 +175,7 @@ public class TaskEditScreen extends Screen {
 			}
 		}
 
-		if (ClientShared.available() && task.type != TaskType.ADVANCEMENT) {
+		if (ClientShared.available() && task.type != TaskType.ADVANCEMENT && task.type != TaskType.TIMER) {
 			addRenderableWidget(Button.builder(visibilityLabel(), b -> {
 				captureFields();
 				task.visibility = (task.visibility + 1) % 3;
@@ -315,8 +315,8 @@ public class TaskEditScreen extends Screen {
 
 	private void save() {
 		captureFields();
-		// 成就任务的多人支持已移除（issue #4）
-		if (task.type == TaskType.ADVANCEMENT) {
+		// 成就 / 时间提醒任务的多人支持已移除（issue #4、#13）
+		if (task.type == TaskType.ADVANCEMENT || task.type == TaskType.TIMER) {
 			task.visibility = 0;
 		}
 		// 只有收集任务能用「共同完成」，其它类型把非法值收回到默认
@@ -326,22 +326,8 @@ public class TaskEditScreen extends Screen {
 		if (task.shareMode < 0) {
 			task.shareMode = 2;
 		}
-		if (task.visibility > 0) {
-			if (!ClientShared.available()) {
-				ClientTasks.toast(I18n.t("share.noServer"));
-				return;
-			}
-			String sharedText = task.text == null ? "" : task.text.trim();
-			if (sharedText.isEmpty()) {
-				ClientTasks.toast(I18n.t("edit.empty"));
-				return;
-			}
-			task.text = sharedText;
-			ClientShared.publish(task);
-			ClientTasks.toast(I18n.t("share.published"));
-			onClose();
-			return;
-		}
+
+		// 内容与类型校验放在「共享 / 本地」分流之前，否则共享任务会绕过物品名校验（issue #12）
 		String text = task.text == null ? "" : task.text.trim();
 		if (text.isEmpty()) {
 			ClientTasks.toast(I18n.t("edit.empty"));
@@ -379,6 +365,17 @@ public class TaskEditScreen extends Screen {
 			}
 			case NORMAL -> {
 			}
+		}
+
+		if (task.visibility > 0) {
+			if (!ClientShared.available()) {
+				ClientTasks.toast(I18n.t("share.noServer"));
+				return;
+			}
+			ClientShared.publish(task);
+			ClientTasks.toast(I18n.t("share.published"));
+			onClose();
+			return;
 		}
 
 		if (creating) {
@@ -501,6 +498,9 @@ public class TaskEditScreen extends Screen {
 		}
 		if (!ClientShared.available()) {
 			graphics.text(font, I18n.t("share.noServer"), x0, rowButtons - 12, 0xFF9E9E9E);
+		} else if (task.type == TaskType.ADVANCEMENT || task.type == TaskType.TIMER) {
+			// 这两种类型不支持共享，说明一下免得以为按钮坏了
+			graphics.text(font, I18n.t("edit.noShare"), x0, rowShare - 10, 0xFF9E9E9E);
 		}
 
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);

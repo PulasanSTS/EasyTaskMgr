@@ -79,6 +79,7 @@ public final class ClientShared {
 	private static final Map<String, Integer> REPORTED = new HashMap<>();
 	/** 刚上报过完成的任务，避免快照回来之前每秒重复发送。 */
 	private static final Map<String, Long> SENT_COMPLETE = new HashMap<>();
+	private static boolean serverVersionWarned;
 
 	private ClientShared() {
 	}
@@ -109,12 +110,14 @@ public final class ClientShared {
 		entries = List.of();
 		REPORTED.clear();
 		SENT_COMPLETE.clear();
+		serverVersionWarned = false;
 	}
 
 	private static void receive(String json) {
 		List<Entry> parsed = new ArrayList<>();
 		try {
 			JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+			checkServerVersion(integer(root, "proto"));
 			for (var element : root.getAsJsonArray("tasks")) {
 				JsonObject o = element.getAsJsonObject();
 				Task task = GSON.fromJson(o.get("json").getAsString(), Task.class);
@@ -144,6 +147,25 @@ public final class ClientShared {
 	/** 老版本服务端不会发新字段，缺字段时用默认值兜底。 */
 	private static boolean bool(JsonObject o, String key) {
 		return o.has(key) && o.get(key).getAsBoolean();
+	}
+
+	/**
+	 * 服务端协议版本检查（issues #6 / #9 的排查结论）。
+	 *
+	 * <p>rc3 之前的服务端不认识 {@code shareMode}，发布出去的「所有（含发布者）」会被当成
+	 * 「任一」，表现为「一个人完成就整条完成」，聊天提示也不会带前缀和绿色。
+	 * 这里检测到旧服务端就提示一次，避免把版本差异误当成功能 bug。
+	 */
+	private static void checkServerVersion(int proto) {
+		if (proto >= com.easytaskmgr.share.SharedTasks.PROTO) {
+			return;
+		}
+		if (serverVersionWarned) {
+			return;
+		}
+		serverVersionWarned = true;
+		EasyTaskMgr.LOGGER.warn("服务端共享协议版本 {}，低于客户端 {}", proto, com.easytaskmgr.share.SharedTasks.PROTO);
+		Notifier.warn(I18n.t("share.outdatedServer"));
 	}
 
 	private static int integer(JsonObject o, String key) {
@@ -196,14 +218,16 @@ public final class ClientShared {
 			return;
 		}
 		for (Entry entry : entries) {
-			if (entry.done() || !entry.iAmParticipant()) {
+			// 「共同完成」时发布者也参与计数（issue #11），其余模式只处理参与者
+			if (entry.done() || !(entry.iAmParticipant() || (entry.combined() && entry.mine()))) {
 				continue;
 			}
 			Task task = entry.task();
 			switch (task.type) {
 				case COLLECT -> {
 					if (entry.combined()) {
-						if (!entry.claimed()) {
+						// 发布者也计入共同完成的数量（issue #11）
+						if (!entry.claimed() && !entry.mine()) {
 							continue;
 						}
 						int count = ClientTasks.countItem(mc, task.target);

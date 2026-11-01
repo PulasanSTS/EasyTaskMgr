@@ -55,6 +55,14 @@ public final class SharedTasks {
 	/** 收集任务：数量相加。 */
 	public static final int MODE_COMBINED = 4;
 
+	/**
+	 * 共享协议版本：客户端用它判断服务端是否为同一代实现。
+	 *
+	 * <p>3 = rc3（五档完成条件 / 共同完成），4 = rc4（发布者计入共同完成、时间提醒不可共享）。
+	 * 版本不一致时客户端会提示「服务端模组版本较旧」，避免把版本差异当成功能 bug。
+	 */
+	public static final int PROTO = 4;
+
 	public static boolean includesCreator(int mode) {
 		return mode == MODE_ANY_CREATOR || mode == MODE_ALL_CREATOR;
 	}
@@ -120,9 +128,9 @@ public final class SharedTasks {
 			return done;
 		}
 
-		/** 收集任务：所有认领者最大数量的和（发布者不计入相加）。 */
+		/** 收集任务：所有认领者 + 发布者最大数量的和（issue #11：发布者也计入）。 */
 		int sumCounts() {
-			int sum = 0;
+			int sum = maxCounts.getOrDefault(creator, 0);
 			for (UUID uuid : claimed) {
 				sum += maxCounts.getOrDefault(uuid, 0);
 			}
@@ -151,9 +159,9 @@ public final class SharedTasks {
 		if (task == null || task.visibility == 0) {
 			return;
 		}
-		// 成就任务的多人支持已移除（issue #4）：服务端直接忽略
-		if (task.type == TaskType.ADVANCEMENT) {
-			EasyTaskMgr.LOGGER.info("忽略共享的成就任务 {}（已移除成就的多人支持）", task.id);
+		// 成就 / 时间提醒任务的多人支持已移除（issue #4、#13）：服务端直接忽略
+		if (task.type == TaskType.ADVANCEMENT || task.type == TaskType.TIMER) {
+			EasyTaskMgr.LOGGER.info("忽略共享的 {} 任务 {}（该类型不支持共享）", task.type, task.id);
 			return;
 		}
 		Entry entry = new Entry();
@@ -249,14 +257,18 @@ public final class SharedTasks {
 		}
 	}
 
-	/** 收集任务「共同完成」：记录每个认领者见过的最大数量，累加达到目标就整条完成。 */
+	/**
+	 * 收集任务「共同完成」：记录每个参与者见过的最大数量，累加达到目标就整条完成。
+	 *
+	 * <p>发布者也计入（issue #11）：发布者不需要认领，他的客户端同样会每秒上报一次。
+	 */
 	public static void progress(MinecraftServer server, ServerPlayer player, String id, int count) {
 		Entry entry = BY_ID.get(id);
 		if (entry == null || entry.done || entry.mode != MODE_COMBINED) {
 			return;
 		}
 		UUID uuid = player.getUUID();
-		if (!entry.claimed.contains(uuid)) {
+		if (!entry.claimed.contains(uuid) && !entry.creator.equals(uuid)) {
 			return;
 		}
 		int previous = entry.maxCounts.getOrDefault(uuid, 0);
@@ -366,13 +378,14 @@ public final class SharedTasks {
 
 	public static String snapshot(ServerPlayer player) {
 		JsonObject root = new JsonObject();
+		root.addProperty("proto", PROTO);
 		JsonArray arr = new JsonArray();
 		for (Entry entry : BY_ID.values()) {
 			if (!entry.visibleTo(player)) {
 				continue;
 			}
-			// 成就任务的多人支持已移除，历史条目不再下发
-			if (entry.type == TaskType.ADVANCEMENT) {
+			// 成就 / 时间提醒任务不支持共享，历史条目不再下发
+			if (entry.type == TaskType.ADVANCEMENT || entry.type == TaskType.TIMER) {
 				continue;
 			}
 			JsonObject o = new JsonObject();

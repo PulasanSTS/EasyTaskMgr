@@ -5,7 +5,7 @@
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.3-62b47a?style=flat-square)](https://www.minecraft.net/)
 [![Fabric](https://img.shields.io/badge/Fabric-0.20.1-dbb69c?style=flat-square)](https://fabricmc.net/)
 [![Java](https://img.shields.io/badge/Java-25-e76f00?style=flat-square)](https://adoptium.net/)
-[![Version](https://img.shields.io/badge/version-1.0.0--rc3-blue?style=flat-square)](https://github.com/PulasanSTS/EasyTaskMgr/releases)
+[![Version](https://img.shields.io/badge/version-1.0.0--rc4-blue?style=flat-square)](https://github.com/PulasanSTS/EasyTaskMgr/releases)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 ---
@@ -63,7 +63,7 @@ EasyTaskMgr 把这些事变成游戏内的待办清单，**在条件满足时主
   | 所有认领者 | 认领者 | 所有认领者都完成 |
   | 任一（含发布者） | 认领者 + 发布者 | 任意一人完成 |
   | 所有（含发布者） | 认领者 + 发布者 | 发布者和所有认领者都完成 |
-  | 共同完成（仅收集） | 认领者 | 各认领者背包里见过的最大数量相加达到目标 |
+  | 共同完成（仅收集） | 认领者 + 发布者 | 各参与者背包里见过的最大数量相加达到目标（发布者也计入） |
 
 - **自动判定**：已认领的收集任务每秒数一遍背包、坐标任务算距离，达标自动上报；
   「共同完成」模式下客户端每秒上报自己看到的数量，由服务端累加；
@@ -71,7 +71,7 @@ EasyTaskMgr 把这些事变成游戏内的待办清单，**在条件满足时主
   格式统一为 `[EasyTaskMgr] xxx shared a task: …`（青色前缀 + 绿色正文，随客户端语言本地化）；
 - **服务端存档**：共享任务保存在世界存档里，重启服务器不会丢失；
 - 发布者可以在列表里 `×` 撤回自己的共享任务；
-- 成就任务的多人支持已移除（用途太窄，且成就进度无法自动判定）。
+- **成就任务与时间提醒任务不支持共享**：成就进度无法自动判定，共享的时间提醒既不会提醒认领者也有被滥用的风险。
 
 ### 4. 语言
 
@@ -83,11 +83,11 @@ EasyTaskMgr 把这些事变成游戏内的待办清单，**在条件满足时主
 ## 安装
 
 1. 安装 **Minecraft 26.3** 对应的 **Fabric Loader**（≥ 0.20.1）；
-2. 把 [Fabric API](https://modrinth.com/mod/fabric-api)（26.3 版本）和 `easytaskmgr-1.0.0-rc3.jar` 一起放进 `.minecraft/mods`；
+2. 把 [Fabric API](https://modrinth.com/mod/fabric-api)（26.3 版本）和 `easytaskmgr-1.0.0-rc4.jar` 一起放进 `.minecraft/mods`；
 3. 启动游戏，右上角出现「待办清单」即安装成功。
 
 > **多人服务器**：客户端装即可用普通待办与提醒功能；要让共享任务可用，**服务端也要装**本模组
-> （成就候选列表同样依赖服务端）。
+> （成就候选列表同样依赖服务端）。服务端与客户端请使用**同一版本**：客户端发现服务端是旧版时会在聊天栏提示。
 
 ## 使用
 
@@ -209,7 +209,7 @@ src/client/java/com/easytaskmgr/client/
 
 - 仅支持 **Minecraft 26.3 + Fabric**，未做 Forge / NeoForge 版本；
 - 收集任务统计**背包（含副手）与背包里潜影盒的内容**，不再统计打开过的容器（该功能在 1.0.0-rc1 移除，代码保留在分支）；
-- 成就任务的多人支持已移除；
+- 成就任务与时间提醒任务不支持共享（编辑器里会提示原因）；
 - 成就目录依赖服务端装模组：纯客户端连原版服务器时只能看到本地已同步的成就；
 - 成就前置条件 UI 已关闭（解析代码保留在 `feature/advancement-ui` 分支）；
 - 共享快照仍是全量广播，人数很多时流量偏大；共同完成的数量每秒上报一次，网络差时进度会稍慢；
@@ -244,7 +244,7 @@ or after a delay. Items and advancements are searched by localized name, with su
 
 Tasks can be **shared** when the server also runs the mod: choose `Personal`, `Shared` or `Special`
 (invite with `/etm invite <player>`), pick one of five completion rules — *any claimant*, *all claimants*,
-*any incl. creator*, *all incl. creator*, or *combined count* (claimants' item amounts are summed) —
+*any incl. creator*, *all incl. creator*, or *combined count* (the amounts of all claimants **and** the creator are summed) —
 and claim a task from the list or directly from the HUD. Claimed collect and coordinate tasks complete
 automatically, every publish / claim / completion is announced in chat
 (`[EasyTaskMgr] …` in aqua + green, localized per client), and shared tasks are saved to

@@ -44,9 +44,11 @@ public class TaskListScreen extends Screen {
 			list.addAll(TaskStore.get().completed());
 		}
 		for (ClientShared.Entry entry : ClientShared.entries()) {
-			if (!entry.done()) {
-				list.add(entry.task());
+			// 「显示已完成」打开时，共享任务里的已完成条目也要出现（issue #10）
+			if (entry.done() && !showDone) {
+				continue;
 			}
+			list.add(entry.task());
 		}
 		return list;
 	}
@@ -73,7 +75,9 @@ public class TaskListScreen extends Screen {
 			String mark = task.done ? "✔" : shared != null && shared.doneByMe() ? "◐" : "□";
 			addRenderableWidget(Button.builder(Component.literal(mark), b -> {
 				if (shared != null) {
-					if (shared.canClaim()) {
+					if (shared.done()) {
+						// 已完成的共享任务只展示，不再能点
+					} else if (shared.canClaim()) {
 						ClientShared.claim(shared.id());
 						ClientTasks.toast(I18n.t("share.claimedToast", task.displayText()));
 					} else if (shared.iAmParticipant() && shared.doneByMe()) {
@@ -93,18 +97,28 @@ public class TaskListScreen extends Screen {
 				rebuildWidgets();
 			}).bounds(cx - 210, y, 20, 20).build());
 
-			addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.edit")), b -> {
-				if (minecraft != null) {
-					minecraft.setScreenAndShow(new TaskEditScreen(task, false, this));
-				}
-			}).bounds(cx + 150, y, 28, 20).build());
+			// 共享任务不在本地任务表里：不提供「编辑 / 删除」，避免误删本地副本或改坏别人的任务
+			if (shared == null) {
+				addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.edit")), b -> {
+					if (minecraft != null) {
+						minecraft.setScreenAndShow(new TaskEditScreen(task, false, this));
+					}
+				}).bounds(cx + 150, y, 28, 20).build());
 
-			addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.delete")), b -> {
-				TaskStore.get().remove(task);
-				TaskStore.get().save();
-				ClientNet.markDirty();
-				rebuildWidgets();
-			}).bounds(cx + 182, y, 20, 20).build());
+				addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.delete")), b -> {
+					TaskStore.get().remove(task);
+					TaskStore.get().save();
+					ClientNet.markDirty();
+					rebuildWidgets();
+				}).bounds(cx + 182, y, 20, 20).build());
+			} else if (shared.mine()) {
+				// 自己的共享任务：留一个撤回按钮
+				addRenderableWidget(Button.builder(Component.literal(I18n.t("share.revoke")), b -> {
+					ClientShared.revoke(shared.id());
+					ClientTasks.toast(I18n.t("share.revoked"));
+					rebuildWidgets();
+				}).bounds(cx + 178, y, 26, 20).build());
+			}
 		}
 
 		int bottom = height - 34;

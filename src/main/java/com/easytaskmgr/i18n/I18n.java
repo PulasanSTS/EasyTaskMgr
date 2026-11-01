@@ -183,6 +183,12 @@ public final class I18n {
 		put("share.invitedCount", "已邀请 %s 认领 %d 个特殊共享任务", "Invited %s to %d special task(s)");
 		put("share.inviteNone", "你没有特殊共享任务可邀请", "You have no special shared tasks to invite");
 		put("share.noServer", "服务端未安装本模组，共享功能不可用", "Server does not have the mod — sharing unavailable");
+		put("share.revoke", "×", "×");
+		put("share.revoked", "已撤回共享任务", "Shared task revoked");
+		put("share.outdatedServer", "服务端的模组版本较旧（低于 rc4），共享任务的完成条件可能不生效，请更新服务端",
+				"The server's mod is older than rc4 — shared completion rules may not apply, please update the server");
+		put("edit.noShare", "该类型（成就 / 时间提醒）不支持共享任务",
+				"This task type (advancement / timer) cannot be shared");
 		put("list.donePrefix", "[已完成] ", "[Done] ");
 		put("list.footer", "%s 快速添加 · %s 列表 · %s 设置 · %s 隐藏 HUD",
 				"%s quick add · %s list · %s settings · %s hide HUD");
