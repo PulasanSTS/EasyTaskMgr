@@ -9,6 +9,7 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 ---
+>此模组由Deepseek-V4.1-Flash开发，可能会有一些未被我测试到的bug，如有遇到请多多反馈
 
 ## 它解决什么问题
 
