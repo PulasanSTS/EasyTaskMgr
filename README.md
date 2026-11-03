@@ -1,5 +1,236 @@
 # EasyTaskMgr
 
+<details>
+<summary>English</summary>
+
+> The cure for a bad memory in Minecraft: hit a hotkey to jot down what you need to do, keep it pinned in the top-right corner, and get a proactive reminder once you've collected enough, unlocked an advancement, reached a location, or hit the right time. In multiplayer you can even share tasks with teammates and finish them together.
+
+> This mod was developed by Deepseek-V4.1-Flash. Some features may still be untested — please report any bugs you run into.
+
+## What problem does it solve
+
+When you play a modpack, a technical/survival world, or multiplayer, you've probably run into this:
+
+- "I'll go mine some diamonds in a bit" — and then you forget;
+- "Remember to put the diamonds in the chest" — you've got the diamonds, but you're already miles away;
+- "Remind me to check the farm in half an hour" — there's no such reminder in the game;
+- In multiplayer, a teammate asks "keep an eye out for my elytra" — both of you keep your own note, and in the end nobody remembers.
+
+EasyTaskMgr turns all of these into an in-game to-do list that **proactively reminds you when a condition is met**, and lets teammates claim and complete the same task together.
+
+## Features
+
+### 1. Basic todos: quick capture + always-on HUD
+
+- Press `B` to open an input box, type a description, pick a priority, and hit Enter to add it;
+- The top-right HUD keeps your current todos on screen at all times; long text wraps automatically, and both the width and the number of visible rows are configurable;
+- **You can drag the HUD into place**: open settings with `K`, then hold and drag the preview box on the right to wherever you want;
+- Four priority levels — Low / Normal / High / Urgent — distinguished by color, with higher priorities sorted to the top;
+- Press `V` to enter HUD interaction mode: release the mouse and **click a task to mark it complete** (shared tasks can be clicked too — see below).
+
+### 2. Advanced todos: condition-triggered reminders
+
+| Type | Completion condition | Example |
+| --- | --- | --- |
+| Collect items | The item reaches a set quantity in your inventory (including the offhand and shulker box contents) | Collect 64 diamonds |
+| Advancement | A specified advancement is achieved | Complete "Into Fire" |
+| Go to coordinates | You come within a radius of the target point | Go to `120 45 -300`, radius 8 |
+| Timed reminder | Remind once on login / every login / every N minutes / a fixed in-game time | Remind me after I join / every 30 minutes / every day at 06:00 |
+
+Details:
+
+- **Type by name**: items / advancements accept localized names (Chinese names work too), and the input box shows live suggestions below it (name + id); scroll to page through them and click to fill one in;
+- **The HUD shows what you need**: collect tasks show `Diamond 0/64`, and advancement tasks show the advancement's display name rather than its registry name;
+- Coordinate tasks show a **direction arrow, target coordinates, remaining distance, relative direction, and current speed** on the HUD;
+- A task can carry an extra reminder line, shown on its **own line** when it completes: `Note for "XXX": YYY`;
+- On completion / when the time is reached, you get a chat message + a sound, and the top of the HUD flashes;
+- In-game time is judged against the world clock; for modpacks with a custom day length, set `ticksPerDay` to the actual value.
+
+### 3. Multiplayer sharing (requires the mod on the server)
+
+- Every task has three **visibility** settings: `Personal` / `Shared` / `Special`;
+  - **Shared**: visible and claimable by all players, shown in blue on the HUD;
+  - **Special**: visible only to the creator and the invited players; invite with `/etm invite <playername>` (case-insensitive);
+- **Claim / complete**: click the circle on a row in the todo list, or click that row in HUD interaction mode — if it isn't claimed yet, the click claims it; if it's already claimed, click again to report completion;
+- **Five completion rules** (five for collect tasks, four for the other types):
+
+  | Completion rule | Participants | When the whole task is complete |
+  | --- | --- | --- |
+  | Any claimant | Claimants | Any one claimant completes it |
+  | All claimants | Claimants | Every claimant completes it |
+  | Any (incl. creator) | Claimants + creator | Any one participant completes it |
+  | All (incl. creator) | Claimants + creator | The creator and every claimant complete it |
+  | Combined count (collect only) | Claimants + creator | The highest quantity each participant has seen in their inventory is summed to reach the target (the creator counts too) |
+
+- **Automatic detection**: claimed collect tasks count your inventory every second, and claimed coordinate tasks compute the distance — both report completion on their own once the target is met;
+  in `Combined count` mode the client reports the quantity it sees every second, and the server accumulates the historical maximum per player;
+- **Chat messages**: publish / claim / complete / partial completion are broadcast to the players who can **see that task**,
+  in a unified format `[EasyTaskMgr] xxx shared a task: …` (cyan prefix + green body, localized to each client's language);
+- **Server-side persistence**: shared tasks are saved in the world save, so they survive a server restart;
+- A creator can `×` withdraw their own shared task from the list;
+- **Advancement and timed-reminder tasks cannot be shared**: advancement progress can't be auto-detected, and a shared reminder would neither fire for the claimants nor be safe from abuse.
+
+### 4. Language
+
+- By default it **follows the Minecraft language**: only Simplified Chinese uses Chinese; every other language falls back to English;
+- You can also force "Auto / Simplified Chinese / English" in the settings screen (`K`), effective immediately;
+- The UI, chat messages, server broadcasts, advancement conditions, and direction words are all bilingual;
+- Server broadcasts are sent as Minecraft translation components, so Chinese and English players on the same server each see their own language.
+
+## Installation
+
+1. Install **Fabric Loader** (≥ 0.20.1) for **Minecraft 26.3**;
+2. Put [Fabric API](https://modrinth.com/mod/fabric-api) (the 26.3 build) and `easytaskmgr-1.0.0-rc4.jar` together into `.minecraft/mods`;
+3. Launch the game — if you see "Todos" in the top-right corner, the installation worked.
+
+> **Multiplayer servers**: installing the mod on the client alone gives you basic todos and reminders; to enable shared tasks, **the server must also have** this mod
+> (the advancement suggestion list also depends on the server). Use the **same version** on the server and the client: the client warns you in chat if it detects an older server version.
+
+## Usage
+
+| Hotkey | Function |
+| --- | --- |
+| `B` | Quick-add a todo (description + priority) |
+| `N` | Open the todo list (check to complete / edit / delete / new / scroll) |
+| `K` | Open settings (drag the HUD position, display options, language, sound) |
+| `H` | Temporarily hide / show the HUD |
+| `V` | HUD interaction mode: release the mouse, click a task to complete it, press `V` again to exit |
+
+Hotkeys can be rebound under "Options → Controls → Key Binds".
+
+### Creating an advanced todo
+
+1. Press `N` to open the list → click "New";
+2. The "Type" button cycles through: Normal / Collect items / Advancement / Go to coordinates / Timed reminder — **only the input fields the current type needs are shown**;
+3. Fill in by type:
+   - Collect: type an item name (e.g. "Diamond"), pick it from the suggestions, then enter a quantity;
+   - Advancement: type an advancement name (e.g. "Into Fire"), pick it from the suggestions;
+   - Coordinate: enter `x / y / z` and an arrival radius;
+   - Time: choose "Once on login / Every login / Every N minutes / In-game time"; in-game time can use the preset buttons or HH:MM + every N days;
+4. To share it with others, use the "Visibility" button to pick `Shared` or `Special`, then the "Completion" button to choose how completion is judged;
+5. Enter an "Extra note" — the line you want to see when it completes (may be left blank);
+6. Save.
+
+### HUD example
+
+```
+┌ Todos 3 ──────────────────────────────────────┐
+│ 1. Go mine iron in the mines                  │
+│    120, 45, -300 · 234m · front-right 40° · 4.3 m/s  │
+│ 2. Collect diamonds                            │
+│    Diamond 12/64                                │
+│ [Normal] Steve · Ancient debris run [claimed] 1/2 done │
+│    Ancient Debris 8/64                          │
+└────────────────────────────────────────────────┘
+```
+
+## Configuration & data
+
+| File | Contents |
+| --- | --- |
+| `.minecraft/config/easytaskmgr.json` | Client config (HUD, display options, language, sound) |
+| `.minecraft/config/easytaskmgr-tasks.json` | Personal todo list (incl. progress; can be backed up / migrated directly) |
+| `<world>/data/easytaskmgr_share.json` | Server-side shared tasks (auto-saved, format version 2, old files migrated automatically) |
+
+Main fields of `easytaskmgr.json`:
+
+| Field | Description |
+| --- | --- |
+| `hudXPercent` / `hudYPercent` | Position of the HUD's right edge / top edge (as a percentage) |
+| `hudMaxWidth` | Max HUD width (pixels); long text wraps to this width |
+| `hudCompactLimit` | Max number of rows to show on the HUD |
+| `hudBackground` / `hudHidden` | Whether to draw a translucent background / whether the HUD is currently hidden |
+| `showTeammates` | Whether to show shared tasks on the HUD |
+| `showDistance` / `showSpeed` / `showDirectionArrow` | Display options for coordinate tasks |
+| `hudInteractive` | Whether the HUD is in interaction mode (toggled with `V`) |
+| `ticksPerDay` | How many ticks make one in-game day (default 24000; adjust if a modpack changed the day/night cycle) |
+| `language` | `auto` (follow the game) / `zh_cn` / `en_us` |
+| `soundEnabled` | Whether to play a sound on completion / reminder |
+
+> `shareEnabled` (the old global sharing toggle) has been removed; sharing is now controlled by each task's visibility.
+> A leftover `shareEnabled` field in the config file is ignored.
+
+## Building from source
+
+Requires **JDK 25** (Minecraft 26.3's class file version is 69).
+
+```bash
+git clone https://github.com/PulasanSTS/EasyTaskMgr.git
+cd EasyTaskMgr
+
+# Build
+./gradlew build          # Windows: gradlew.bat build
+
+# Launch the client / server with the mod
+./gradlew runClient
+./gradlew runServer
+```
+
+The artifact is at `build/libs/easytaskmgr-<version>.jar`.
+
+> Note for users in mainland China: `settings.gradle` / `build.gradle` default to the Fabric Maven mirror (`repository.hanbings.io`),
+> and the Gradle distribution uses a Tencent Cloud mirror. With a stable direct connection you can switch back to the official addresses.
+
+## Project structure
+
+```
+src/main/java/com/easytaskmgr/
+├── EasyTaskMgr.java            Common entry: network packet registration, shared-task handling, advancement-catalog relay
+├── share/
+│   ├── SharedTasks.java        Server-side shared-task table: visibility, claiming, five completion rules, chat messages
+│   └── ShareStore.java         Shared-task persistence (world/data/easytaskmgr_share.json, format version 2)
+├── task/                       Task model, priority, type, timer modes, JSON repository
+├── config/ModConfig.java       Client config
+├── i18n/I18n.java              Built-in Chinese/English strings
+├── advancement/                Advancement condition describers (server-side parsing)
+└── net/                        ShareActionC2S / ShareProgressC2S / ShareSnapshotS2C / advancement query
+
+src/client/java/com/easytaskmgr/client/
+├── EasyTaskMgrClient.java      Client entry: HUD, keybinds, tick, auto-detection, commands
+├── TaskHud.java                Top-right HUD (shared-task rows, priority prefix, click-to-complete)
+├── ClientTasks.java            Condition detection, completion checks, item-name / advancement-name resolution
+├── ClientShared.java           Shared-task cache, claim/complete, quantity reporting, auto-detection
+├── ClientNet.java              Compatibility shim (the old shared-sync interface)
+├── Keybinds.java               Keybinds
+├── Notifier.java               Chat messages + sound
+├── Suggestions.java            Item / advancement name search
+├── AdvancementCatalog.java     Advancement catalog (server-delivered + localized)
+├── AdvancementInfo.java        Advancement prerequisites and a summary of how they're earned
+├── Language.java / LangResources.java  Language following and language-file loading
+├── TextWrap.java               Pixel-width-based text wrapping
+├── mixin/MouseHandlerMixin.java Mouse handling in HUD interaction mode
+└── ui/                         The Quick-add / List / Edit / Settings screens
+```
+
+## Compatibility & known limitations
+
+- Supports **Minecraft 26.3 + Fabric** only; no Forge / NeoForge version has been made;
+- Collect tasks count the **inventory (incl. offhand) and the contents of shulker boxes inside the inventory**, but not containers you have merely opened (that feature was removed in 1.0.0-rc1; the code is kept on a branch);
+- Advancement and timed-reminder tasks cannot be shared (the editor shows why);
+- The advancement catalog depends on the mod being on the server: connecting from a pure client to a vanilla server shows only the advancements already synced locally;
+- The advancement-prerequisites UI is disabled (the parsing code is kept on the `feature/advancement-ui` branch);
+- Shared snapshots are still broadcast in full, which costs more bandwidth with many players; `Combined count` quantities are reported once per second, so progress may lag on a poor connection;
+- Changing a shared task's completion rule clears its recorded progress and quantities;
+- Shared tasks are stored only on the server; "delete" on the client only removes a local copy and does not withdraw the task.
+
+## Roadmap
+
+- [ ] Command interface: `/etm add <text>`, `/etm list`
+- [ ] Withdrawal notifications for shared tasks
+- [ ] A "count from zero" mode for collect tasks
+- [ ] Expand advancement prerequisites into a full condition tree
+- [ ] Better multiplayer collaboration
+
+## Changelog
+
+- Changes for each version are listed in [Releases](https://github.com/PulasanSTS/EasyTaskMgr/releases).
+
+## License
+
+[MIT](LICENSE) — free to use, modify, and distribute, as long as the copyright and license notices are retained.
+
+</details>
+
 > 在 Minecraft 里「记性不好」的解药：按一下快捷键记下要做的事，右上角一直挂着；收集够了、成就到手、走到地方、到点了，它会主动提醒你；联机时还能把任务共享给队友一起完成。
 
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.3-62b47a?style=flat-square)](https://www.minecraft.net/)
@@ -234,234 +465,3 @@ src/client/java/com/easytaskmgr/client/
 [MIT](LICENSE) — 可自由使用、修改、分发，保留版权与许可声明即可。
 
 ---
-
-<details>
-<summary>English (full README)</summary>
-
-> The cure for a bad memory in Minecraft: hit a hotkey to jot down what you need to do, keep it pinned in the top-right corner, and get a proactive reminder once you've collected enough, unlocked an advancement, reached a location, or hit the right time. In multiplayer you can even share tasks with teammates and finish them together.
-
-> This mod was developed by Deepseek-V4.1-Flash. Some features may still be untested — please report any bugs you run into.
-
-## What problem does it solve
-
-When you play a modpack, a technical/survival world, or multiplayer, you've probably run into this:
-
-- "I'll go mine some diamonds in a bit" — and then you forget;
-- "Remember to put the diamonds in the chest" — you've got the diamonds, but you're already miles away;
-- "Remind me to check the farm in half an hour" — there's no such reminder in the game;
-- In multiplayer, a teammate asks "keep an eye out for my elytra" — both of you keep your own note, and in the end nobody remembers.
-
-EasyTaskMgr turns all of these into an in-game to-do list that **proactively reminds you when a condition is met**, and lets teammates claim and complete the same task together.
-
-## Features
-
-### 1. Basic todos: quick capture + always-on HUD
-
-- Press `B` to open an input box, type a description, pick a priority, and hit Enter to add it;
-- The top-right HUD keeps your current todos on screen at all times; long text wraps automatically, and both the width and the number of visible rows are configurable;
-- **You can drag the HUD into place**: open settings with `K`, then hold and drag the preview box on the right to wherever you want;
-- Four priority levels — Low / Normal / High / Urgent — distinguished by color, with higher priorities sorted to the top;
-- Press `V` to enter HUD interaction mode: release the mouse and **click a task to mark it complete** (shared tasks can be clicked too — see below).
-
-### 2. Advanced todos: condition-triggered reminders
-
-| Type | Completion condition | Example |
-| --- | --- | --- |
-| Collect items | The item reaches a set quantity in your inventory (including the offhand and shulker box contents) | Collect 64 diamonds |
-| Advancement | A specified advancement is achieved | Complete "Into Fire" |
-| Go to coordinates | You come within a radius of the target point | Go to `120 45 -300`, radius 8 |
-| Timed reminder | Remind once on login / every login / every N minutes / a fixed in-game time | Remind me after I join / every 30 minutes / every day at 06:00 |
-
-Details:
-
-- **Type by name**: items / advancements accept localized names (Chinese names work too), and the input box shows live suggestions below it (name + id); scroll to page through them and click to fill one in;
-- **The HUD shows what you need**: collect tasks show `Diamond 0/64`, and advancement tasks show the advancement's display name rather than its registry name;
-- Coordinate tasks show a **direction arrow, target coordinates, remaining distance, relative direction, and current speed** on the HUD;
-- A task can carry an extra reminder line, shown on its **own line** when it completes: `Note for "XXX": YYY`;
-- On completion / when the time is reached, you get a chat message + a sound, and the top of the HUD flashes;
-- In-game time is judged against the world clock; for modpacks with a custom day length, set `ticksPerDay` to the actual value.
-
-### 3. Multiplayer sharing (requires the mod on the server)
-
-- Every task has three **visibility** settings: `Personal` / `Shared` / `Special`;
-  - **Shared**: visible and claimable by all players, shown in blue on the HUD;
-  - **Special**: visible only to the creator and the invited players; invite with `/etm invite <playername>` (case-insensitive);
-- **Claim / complete**: click the circle on a row in the todo list, or click that row in HUD interaction mode — if it isn't claimed yet, the click claims it; if it's already claimed, click again to report completion;
-- **Five completion rules** (five for collect tasks, four for the other types):
-
-  | Completion rule | Participants | When the whole task is complete |
-  | --- | --- | --- |
-  | Any claimant | Claimants | Any one claimant completes it |
-  | All claimants | Claimants | Every claimant completes it |
-  | Any (incl. creator) | Claimants + creator | Any one participant completes it |
-  | All (incl. creator) | Claimants + creator | The creator and every claimant complete it |
-  | Combined count (collect only) | Claimants + creator | The highest quantity each participant has seen in their inventory is summed to reach the target (the creator counts too) |
-
-- **Automatic detection**: claimed collect tasks count your inventory every second, and claimed coordinate tasks compute the distance — both report completion on their own once the target is met;
-  in `Combined count` mode the client reports the quantity it sees every second, and the server accumulates the historical maximum per player;
-- **Chat messages**: publish / claim / complete / partial completion are broadcast to the players who can **see that task**,
-  in a unified format `[EasyTaskMgr] xxx shared a task: …` (cyan prefix + green body, localized to each client's language);
-- **Server-side persistence**: shared tasks are saved in the world save, so they survive a server restart;
-- A creator can `×` withdraw their own shared task from the list;
-- **Advancement and timed-reminder tasks cannot be shared**: advancement progress can't be auto-detected, and a shared reminder would neither fire for the claimants nor be safe from abuse.
-
-### 4. Language
-
-- By default it **follows the Minecraft language**: only Simplified Chinese uses Chinese; every other language falls back to English;
-- You can also force "Auto / Simplified Chinese / English" in the settings screen (`K`), effective immediately;
-- The UI, chat messages, server broadcasts, advancement conditions, and direction words are all bilingual;
-- Server broadcasts are sent as Minecraft translation components, so Chinese and English players on the same server each see their own language.
-
-## Installation
-
-1. Install **Fabric Loader** (≥ 0.20.1) for **Minecraft 26.3**;
-2. Put [Fabric API](https://modrinth.com/mod/fabric-api) (the 26.3 build) and `easytaskmgr-1.0.0-rc4.jar` together into `.minecraft/mods`;
-3. Launch the game — if you see "Todos" in the top-right corner, the installation worked.
-
-> **Multiplayer servers**: installing the mod on the client alone gives you basic todos and reminders; to enable shared tasks, **the server must also have** this mod
-> (the advancement suggestion list also depends on the server). Use the **same version** on the server and the client: the client warns you in chat if it detects an older server version.
-
-## Usage
-
-| Hotkey | Function |
-| --- | --- |
-| `B` | Quick-add a todo (description + priority) |
-| `N` | Open the todo list (check to complete / edit / delete / new / scroll) |
-| `K` | Open settings (drag the HUD position, display options, language, sound) |
-| `H` | Temporarily hide / show the HUD |
-| `V` | HUD interaction mode: release the mouse, click a task to complete it, press `V` again to exit |
-
-Hotkeys can be rebound under "Options → Controls → Key Binds".
-
-### Creating an advanced todo
-
-1. Press `N` to open the list → click "New";
-2. The "Type" button cycles through: Normal / Collect items / Advancement / Go to coordinates / Timed reminder — **only the input fields the current type needs are shown**;
-3. Fill in by type:
-   - Collect: type an item name (e.g. "Diamond"), pick it from the suggestions, then enter a quantity;
-   - Advancement: type an advancement name (e.g. "Into Fire"), pick it from the suggestions;
-   - Coordinate: enter `x / y / z` and an arrival radius;
-   - Time: choose "Once on login / Every login / Every N minutes / In-game time"; in-game time can use the preset buttons or HH:MM + every N days;
-4. To share it with others, use the "Visibility" button to pick `Shared` or `Special`, then the "Completion" button to choose how completion is judged;
-5. Enter an "Extra note" — the line you want to see when it completes (may be left blank);
-6. Save.
-
-### HUD example
-
-```
-┌ Todos 3 ──────────────────────────────────────┐
-│ 1. Go mine iron in the mines                  │
-│    120, 45, -300 · 234m · front-right 40° · 4.3 m/s  │
-│ 2. Collect diamonds                            │
-│    Diamond 12/64                                │
-│ [Normal] Steve · Ancient debris run [claimed] 1/2 done │
-│    Ancient Debris 8/64                          │
-└────────────────────────────────────────────────┘
-```
-
-## Configuration & data
-
-| File | Contents |
-| --- | --- |
-| `.minecraft/config/easytaskmgr.json` | Client config (HUD, display options, language, sound) |
-| `.minecraft/config/easytaskmgr-tasks.json` | Personal todo list (incl. progress; can be backed up / migrated directly) |
-| `<world>/data/easytaskmgr_share.json` | Server-side shared tasks (auto-saved, format version 2, old files migrated automatically) |
-
-Main fields of `easytaskmgr.json`:
-
-| Field | Description |
-| --- | --- |
-| `hudXPercent` / `hudYPercent` | Position of the HUD's right edge / top edge (as a percentage) |
-| `hudMaxWidth` | Max HUD width (pixels); long text wraps to this width |
-| `hudCompactLimit` | Max number of rows to show on the HUD |
-| `hudBackground` / `hudHidden` | Whether to draw a translucent background / whether the HUD is currently hidden |
-| `showTeammates` | Whether to show shared tasks on the HUD |
-| `showDistance` / `showSpeed` / `showDirectionArrow` | Display options for coordinate tasks |
-| `hudInteractive` | Whether the HUD is in interaction mode (toggled with `V`) |
-| `ticksPerDay` | How many ticks make one in-game day (default 24000; adjust if a modpack changed the day/night cycle) |
-| `language` | `auto` (follow the game) / `zh_cn` / `en_us` |
-| `soundEnabled` | Whether to play a sound on completion / reminder |
-
-> `shareEnabled` (the old global sharing toggle) has been removed; sharing is now controlled by each task's visibility.
-> A leftover `shareEnabled` field in the config file is ignored.
-
-## Building from source
-
-Requires **JDK 25** (Minecraft 26.3's class file version is 69).
-
-```bash
-git clone https://github.com/PulasanSTS/EasyTaskMgr.git
-cd EasyTaskMgr
-
-# Build
-./gradlew build          # Windows: gradlew.bat build
-
-# Launch the client / server with the mod
-./gradlew runClient
-./gradlew runServer
-```
-
-The artifact is at `build/libs/easytaskmgr-<version>.jar`.
-
-> Note for users in mainland China: `settings.gradle` / `build.gradle` default to the Fabric Maven mirror (`repository.hanbings.io`),
-> and the Gradle distribution uses a Tencent Cloud mirror. With a stable direct connection you can switch back to the official addresses.
-
-## Project structure
-
-```
-src/main/java/com/easytaskmgr/
-├── EasyTaskMgr.java            Common entry: network packet registration, shared-task handling, advancement-catalog relay
-├── share/
-│   ├── SharedTasks.java        Server-side shared-task table: visibility, claiming, five completion rules, chat messages
-│   └── ShareStore.java         Shared-task persistence (world/data/easytaskmgr_share.json, format version 2)
-├── task/                       Task model, priority, type, timer modes, JSON repository
-├── config/ModConfig.java       Client config
-├── i18n/I18n.java              Built-in Chinese/English strings
-├── advancement/                Advancement condition describers (server-side parsing)
-└── net/                        ShareActionC2S / ShareProgressC2S / ShareSnapshotS2C / advancement query
-
-src/client/java/com/easytaskmgr/client/
-├── EasyTaskMgrClient.java      Client entry: HUD, keybinds, tick, auto-detection, commands
-├── TaskHud.java                Top-right HUD (shared-task rows, priority prefix, click-to-complete)
-├── ClientTasks.java            Condition detection, completion checks, item-name / advancement-name resolution
-├── ClientShared.java           Shared-task cache, claim/complete, quantity reporting, auto-detection
-├── ClientNet.java              Compatibility shim (the old shared-sync interface)
-├── Keybinds.java               Keybinds
-├── Notifier.java               Chat messages + sound
-├── Suggestions.java            Item / advancement name search
-├── AdvancementCatalog.java     Advancement catalog (server-delivered + localized)
-├── AdvancementInfo.java        Advancement prerequisites and a summary of how they're earned
-├── Language.java / LangResources.java  Language following and language-file loading
-├── TextWrap.java               Pixel-width-based text wrapping
-├── mixin/MouseHandlerMixin.java Mouse handling in HUD interaction mode
-└── ui/                         The Quick-add / List / Edit / Settings screens
-```
-
-## Compatibility & known limitations
-
-- Supports **Minecraft 26.3 + Fabric** only; no Forge / NeoForge version has been made;
-- Collect tasks count the **inventory (incl. offhand) and the contents of shulker boxes inside the inventory**, but not containers you have merely opened (that feature was removed in 1.0.0-rc1; the code is kept on a branch);
-- Advancement and timed-reminder tasks cannot be shared (the editor shows why);
-- The advancement catalog depends on the mod being on the server: connecting from a pure client to a vanilla server shows only the advancements already synced locally;
-- The advancement-prerequisites UI is disabled (the parsing code is kept on the `feature/advancement-ui` branch);
-- Shared snapshots are still broadcast in full, which costs more bandwidth with many players; `Combined count` quantities are reported once per second, so progress may lag on a poor connection;
-- Changing a shared task's completion rule clears its recorded progress and quantities;
-- Shared tasks are stored only on the server; "delete" on the client only removes a local copy and does not withdraw the task.
-
-## Roadmap
-
-- [ ] Command interface: `/etm add <text>`, `/etm list`
-- [ ] Withdrawal notifications for shared tasks
-- [ ] A "count from zero" mode for collect tasks
-- [ ] Expand advancement prerequisites into a full condition tree
-- [ ] Better multiplayer collaboration
-
-## Changelog
-
-- Changes for each version are listed in [Releases](https://github.com/PulasanSTS/EasyTaskMgr/releases).
-
-## License
-
-[MIT](LICENSE) — free to use, modify, and distribute, as long as the copyright and license notices are retained.
-
-</details>
