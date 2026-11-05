@@ -1,5 +1,6 @@
 package com.easytaskmgr.client.ui;
 
+import com.easytaskmgr.client.ClientTasks;
 import com.easytaskmgr.config.ModConfig;
 import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.task.Task;
@@ -27,6 +28,7 @@ public class ConfigScreen extends Screen {
 	private static final int BTN_W = 38;
 
 	private final Screen parent;
+	private String csvStatus = "";
 	private boolean dragging;
 	private double dragOffsetX;
 	private double dragOffsetY;
@@ -111,6 +113,15 @@ public class ConfigScreen extends Screen {
 
 		addRenderableWidget(Button.builder(Component.literal(I18n.t("cfg.done")), b -> onClose())
 				.bounds(X0 + 92, bottom, 84, 18).build());
+
+		// 任务导入 / 导出（issue #18）：固定读写 config/easytaskmgr-tasks.csv
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("csv.export")), b -> {
+			csvStatus = ClientTasks.exportCsv();
+		}).bounds(X0 + 184, bottom, 84, 18).build());
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("csv.import")), b -> {
+			csvStatus = ClientTasks.importCsv();
+			rebuildWidgets();
+		}).bounds(X0 + 272, bottom, 84, 18).build());
 	}
 
 	private static String nextLanguage(String current) {
@@ -231,7 +242,12 @@ public class ConfigScreen extends Screen {
 			graphics.text(font, I18n.t("cfg.sample", 2), r[0] + 5, lineY + font.lineHeight + 1, 0xFFFFFFFF);
 		}
 
-		graphics.text(font, I18n.t("cfg.hint"), X0, height - 12, 0xFF9FB3C8);
+		if (csvStatus.isEmpty()) {
+			graphics.text(font, I18n.t("csv.hint"), X0, height - 12, 0xFF9FB3C8);
+		} else {
+			graphics.text(font, csvStatus, X0, height - 12, 0xFF8BC34A);
+		}
+		graphics.text(font, I18n.t("cfg.hint"), X0, height - 24, 0xFF9FB3C8);
 
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}

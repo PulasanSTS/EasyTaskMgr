@@ -229,15 +229,17 @@ public final class TaskHud implements HudElement {
 		}
 	}
 
-	/** 共享任务的状态标签，带进度（「全部」或「共同完成」时）。 */
+	/**
+	 * 共享任务的状态标签。
+	 *
+	 * <p>进度只放在第二行（`Dirt 8/8 · 2/2 done`），标签里不再重复，
+	 * 否则会出现 `[我的共享] 0/2 已完成` 和第二行 `0/2 已完成` 重复（issue #16）。
+	 */
 	private static String sharedTag(ClientShared.Entry entry) {
-		String tag = entry.waitingOthers() ? I18n.t("share.tagWaiting")
+		return entry.waitingOthers() ? I18n.t("share.tagWaiting")
 				: entry.mine() ? I18n.t("share.tagMine")
 				: entry.claimed() ? I18n.t("share.tagClaimed")
 				: entry.canClaim() ? I18n.t("share.tagClaim") : I18n.t("share.tagLocked");
-		// 「共同完成」的进度已经在下一行（物品名 数量/目标）里了，这里不再重复
-		String progress = entry.combined() ? null : entry.progressText();
-		return progress == null || progress.isBlank() ? tag : tag + " " + progress;
 	}
 
 	/** 共享任务第二行：共同完成显示「物品名 总数/目标」，其它模式显示任务详情 + 完成人数。 */

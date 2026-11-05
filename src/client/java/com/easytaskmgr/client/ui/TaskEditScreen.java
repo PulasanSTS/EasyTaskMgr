@@ -500,7 +500,7 @@ public class TaskEditScreen extends Screen {
 			graphics.text(font, I18n.t("share.noServer"), x0, rowButtons - 12, 0xFF9E9E9E);
 		} else if (task.type == TaskType.ADVANCEMENT || task.type == TaskType.TIMER) {
 			// 这两种类型不支持共享，说明一下免得以为按钮坏了
-			graphics.text(font, I18n.t("edit.noShare"), x0, rowShare - 10, 0xFF9E9E9E);
+			graphics.text(font, I18n.t("edit.noShare"), x0, rowShare + 5, 0xFF9E9E9E);
 		}
 
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);

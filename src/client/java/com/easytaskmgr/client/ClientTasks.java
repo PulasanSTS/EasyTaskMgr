@@ -1,11 +1,14 @@
 package com.easytaskmgr.client;
 
+import com.easytaskmgr.EasyTaskMgr;
 import com.easytaskmgr.i18n.I18n;
 import com.easytaskmgr.task.Priority;
 import com.easytaskmgr.task.Task;
+import com.easytaskmgr.task.TaskCsv;
 import com.easytaskmgr.task.TaskStore;
 import com.easytaskmgr.task.TaskType;
 import com.easytaskmgr.task.TimerMode;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.multiplayer.ClientAdvancements;
@@ -18,7 +21,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemContainerContents;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 客户端任务逻辑：条件检测、完成判定、提醒文案。
@@ -329,4 +336,63 @@ public final class ClientTasks {
 		toast("+ " + text);
 		ClientNet.markDirty();
 	}
+
+	/** CSV 导入 / 导出用的固定文件位置：{@code config/easytaskmgr-tasks.csv}。 */
+	public static Path csvFile() {
+		return FabricLoader.getInstance().getConfigDir().resolve("easytaskmgr-tasks.csv");
+	}
+
+	/** 把当前全部任务（含已完成）导出成 CSV（issue #18）。 */
+	public static String exportCsv() {
+		Path path = csvFile();
+		try {
+			Files.createDirectories(path.getParent());
+			List<Task> all = TaskStore.get().all();
+			// 带 BOM，Excel 打开中文才不会乱码
+			Files.writeString(path, "\uFEFF" + TaskCsv.toCsv(all), StandardCharsets.UTF_8);
+			String msg = I18n.t("csv.exported", all.size(), path.getFileName().toString());
+			Notifier.info(msg);
+			EasyTaskMgr.LOGGER.info("导出 {} 条任务到 {}", all.size(), path);
+			return msg;
+		} catch (Exception e) {
+			EasyTaskMgr.LOGGER.error("导出 CSV 失败：{}", path, e);
+			String msg = I18n.t("csv.failed");
+			Notifier.warn(msg);
+			return msg;
+		}
+	}
+
+	/** 从 CSV 追加任务；已存在的任务不动，坏行会跳过并计数。 */
+	public static String importCsv() {
+		Path path = csvFile();
+		if (!Files.isRegularFile(path)) {
+			String msg = I18n.t("csv.missing", path.getFileName().toString());
+			Notifier.warn(msg);
+			return msg;
+		}
+		try {
+			String text = Files.readString(path, StandardCharsets.UTF_8);
+			TaskCsv.Result result = TaskCsv.fromCsv(text);
+			for (Task task : result.tasks()) {
+				// 重新生成 id，重复导入同一份文件不会互相覆盖
+				task.id = UUID.randomUUID().toString();
+				task.normalize();
+				TaskStore.get().add(task);
+			}
+			TaskStore.get().save();
+			ClientNet.markDirty();
+			String msg = result.skipped() > 0
+					? I18n.t("csv.importedSkip", result.tasks().size(), result.skipped())
+					: I18n.t("csv.imported", result.tasks().size());
+			Notifier.info(msg);
+			EasyTaskMgr.LOGGER.info("从 {} 导入 {} 条任务（跳过 {} 行）", path, result.tasks().size(), result.skipped());
+			return msg;
+		} catch (Exception e) {
+			EasyTaskMgr.LOGGER.error("导入 CSV 失败：{}", path, e);
+			String msg = I18n.t("csv.failed");
+			Notifier.warn(msg);
+			return msg;
+		}
+	}
 }
+

@@ -80,7 +80,7 @@ Details:
 ## Installation
 
 1. Install **Fabric Loader** (≥ 0.20.1) for **Minecraft 26.3**;
-2. Put [Fabric API](https://modrinth.com/mod/fabric-api) (the 26.3 build) and `easytaskmgr-1.0.0-rc4.jar` together into `.minecraft/mods`;
+2. Put [Fabric API](https://modrinth.com/mod/fabric-api) (the 26.3 build) and `easytaskmgr-1.0.0-rc5.jar` together into `.minecraft/mods`;
 3. Launch the game — if you see "Todos" in the top-right corner, the installation worked.
 
 > **Multiplayer servers**: installing the mod on the client alone gives you basic todos and reminders; to enable shared tasks, **the server must also have** this mod
@@ -124,6 +124,12 @@ Hotkeys can be rebound under "Options → Controls → Key Binds".
 └────────────────────────────────────────────────┘
 ```
 
+### Importing / exporting tasks (CSV)
+
+- Press `K` to open settings; the bottom row has **Export CSV** and **Import CSV**, using the fixed file `.minecraft/config/easytaskmgr-tasks.csv`;
+- The exported header is `text, type, target, count, x, y, z, radius, timerMode, intervalMinutes, gameHour, gameMinute, gameDayInterval, priority, done, remindText`;
+- You can edit the table in Excel or a text editor and click "Import CSV" — the rows are **appended** as tasks (each gets a fresh id, so importing the same file twice does not overwrite anything);
+- Fields containing commas, quotes or line breaks are handled correctly; rows with empty text or a missing `target` for collect / advancement tasks are skipped, and the result message tells you how many were ignored.
 ## Configuration & data
 
 | File | Contents |
@@ -236,7 +242,7 @@ src/client/java/com/easytaskmgr/client/
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.3-62b47a?style=flat-square)](https://www.minecraft.net/)
 [![Fabric](https://img.shields.io/badge/Fabric-0.20.1-dbb69c?style=flat-square)](https://fabricmc.net/)
 [![Java](https://img.shields.io/badge/Java-25-e76f00?style=flat-square)](https://adoptium.net/)
-[![Version](https://img.shields.io/badge/version-1.0.0--rc4-blue?style=flat-square)](https://github.com/PulasanSTS/EasyTaskMgr/releases)
+[![Version](https://img.shields.io/badge/version-1.0.0--rc5-blue?style=flat-square)](https://github.com/PulasanSTS/EasyTaskMgr/releases)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 ---
@@ -315,7 +321,7 @@ EasyTaskMgr 把这些事变成游戏内的待办清单，**在条件满足时主
 ## 安装
 
 1. 安装 **Minecraft 26.3** 对应的 **Fabric Loader**（≥ 0.20.1）；
-2. 把 [Fabric API](https://modrinth.com/mod/fabric-api)（26.3 版本）和 `easytaskmgr-1.0.0-rc4.jar` 一起放进 `.minecraft/mods`；
+2. 把 [Fabric API](https://modrinth.com/mod/fabric-api)（26.3 版本）和 `easytaskmgr-1.0.0-rc5.jar` 一起放进 `.minecraft/mods`；
 3. 启动游戏，右上角出现「待办清单」即安装成功。
 
 > **多人服务器**：客户端装即可用普通待办与提醒功能；要让共享任务可用，**服务端也要装**本模组
@@ -359,6 +365,12 @@ EasyTaskMgr 把这些事变成游戏内的待办清单，**在条件满足时主
 └────────────────────────────────────────────────┘
 ```
 
+### 任务导入 / 导出（CSV）
+
+- 按 `K` 打开设置，底部有 **导出 CSV** / **导入 CSV** 两个按钮，文件固定是 `.minecraft/config/easytaskmgr-tasks.csv`；
+- 导出的表头：`text, type, target, count, x, y, z, radius, timerMode, intervalMinutes, gameHour, gameMinute, gameDayInterval, priority, done, remindText`；
+- 表格可以用 Excel / 记事本直接改，改完点「导入 CSV」就会把行**追加**成任务（每条都会分配新 id，重复导入不会互相覆盖）；
+- 字段里带逗号、引号、换行也能正确解析；收集 / 成就任务缺 `target` 或文本为空的行会被跳过，并在提示里告诉你有几行没导入。
 ## 配置与数据
 
 | 文件 | 内容 |

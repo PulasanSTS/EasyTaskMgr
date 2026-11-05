@@ -114,7 +114,7 @@ public final class I18n {
 
 		// HUD
 		put("hud.title", "待办清单 %d", "Todos %d");
-		put("hud.hint", "点击任务即可完成 · 按 %s 退出", "Click a task to complete · %s to exit");
+		put("hud.hint", "点击任务即可完成 / 认领 · 按 %s 退出", "Click a task to complete or claim · %s to exit");
 		put("hud.more", "…还有 %d 条", "…and %d more");
 		put("hud.advancement", "成就 %s", "Advancement %s");
 		put("hud.need", " · 需要：%s", " · needs: %s");
@@ -189,6 +189,16 @@ public final class I18n {
 				"The server's mod is older than rc4 — shared completion rules may not apply, please update the server");
 		put("edit.noShare", "该类型（成就 / 时间提醒）不支持共享任务",
 				"This task type (advancement / timer) cannot be shared");
+
+		// 任务 CSV 导入 / 导出（issue #18）
+		put("csv.export", "导出 CSV", "Export CSV");
+		put("csv.import", "导入 CSV", "Import CSV");
+		put("csv.hint", "任务 CSV：config/easytaskmgr-tasks.csv", "Task CSV: config/easytaskmgr-tasks.csv");
+		put("csv.exported", "已导出 %d 条任务到 %s", "Exported %d task(s) to %s");
+		put("csv.imported", "已导入 %d 条任务", "Imported %d task(s)");
+		put("csv.importedSkip", "已导入 %d 条任务（跳过 %d 行）", "Imported %d task(s) (%d row(s) skipped)");
+		put("csv.missing", "找不到 %s，请先导出一份", "%s not found — export one first");
+		put("csv.failed", "CSV 操作失败，详见日志", "CSV operation failed — see the log");
 		put("list.donePrefix", "[已完成] ", "[Done] ");
 		put("list.footer", "%s 快速添加 · %s 列表 · %s 设置 · %s 隐藏 HUD",
 				"%s quick add · %s list · %s settings · %s hide HUD");
