@@ -177,6 +177,10 @@ public final class SharedTasks {
 		entry.json = GSON.toJson(task);
 		entry.visibility = task.visibility == 2 ? 2 : 1;
 		entry.mode = normalizeMode(task.shareMode);
+		// 服务端也兜底一次：「共同完成」只允许收集任务（防止旧客户端 / 手改 CSV 传上来）
+		if (task.type != TaskType.COLLECT && entry.mode == MODE_COMBINED) {
+			entry.mode = MODE_ANY_CREATOR;
+		}
 		entry.targetCount = Math.max(1, task.targetCount);
 		entry.type = task.type;
 		Entry old = BY_ID.get(entry.id);
