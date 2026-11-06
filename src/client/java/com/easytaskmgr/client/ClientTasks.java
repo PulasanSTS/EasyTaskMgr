@@ -89,9 +89,9 @@ public final class ClientTasks {
 			if (contents == null) {
 				continue;
 			}
-			NonNullList<ItemStack> inner = NonNullList.create();
-			contents.copyInto(inner);
-			for (ItemStack in : inner) {
+			// 用 nonEmptyItemCopyStream 而不是 copyInto：copyInto 需要目标列表已经按容量建好，
+			// 传空列表进去会什么都拷不出来（issue #19 的另一个原因）
+			for (ItemStack in : contents.nonEmptyItemCopyStream().toList()) {
 				if (!in.isEmpty() && in.is(item)) {
 					total += in.getCount();
 				}
@@ -257,7 +257,15 @@ public final class ClientTasks {
 		return AdvancementCatalog.titleOf(advancementId);
 	}
 
-	public static int countItem(Minecraft mc, String itemId) {		if (mc.player == null) {
+	/**
+	 * 统计背包里某物品的总数：背包 + 副手 + **背包里潜影盒的内容**。
+	 *
+	 * <p>潜影盒内容这条以前只写了 {@link #countInShulkers} 却没接上，
+	 * 导致「潜影盒里的物品不算数」（issue #19）；现在统一在这里加回来，
+	 * 本地任务和共享任务（共同完成上报）用的是同一份统计。
+	 */
+	public static int countItem(Minecraft mc, String itemId) {
+		if (mc.player == null) {
 			return 0;
 		}
 		Identifier id = Identifier.tryParse(itemId);
@@ -278,6 +286,8 @@ public final class ClientTasks {
 		if (!offhand.isEmpty() && offhand.is(item)) {
 			total += offhand.getCount();
 		}
+		// 背包里潜影盒的内容也算（issue #19）
+		total += countInShulkers(mc, itemId);
 		return total;
 	}
 
@@ -288,13 +298,6 @@ public final class ClientTasks {
 		double dx = task.x - mc.player.getX();
 		double dz = task.z - mc.player.getZ();
 		return Math.sqrt(dx * dx + dz * dz);
-	}
-
-	private static String reminderText(Task task) {
-		if (task.remindText != null && !task.remindText.isBlank()) {
-			return task.displayText() + " —— " + task.remindText;
-		}
-		return task.displayText();
 	}
 
 	/** 供 HUD / 列表点击完成时调用：统一走这里，附加提醒才会一起输出。 */

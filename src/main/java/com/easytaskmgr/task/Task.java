@@ -121,35 +121,6 @@ public class Task {
 		};
 	}
 
-	/** 复制一条任务的展示信息，用于共享给队友。 */
-	public Task copyForShare() {
-		Task t = new Task();
-		t.id = id;
-		t.text = text;
-		t.priority = priority;
-		t.done = done;
-		t.type = type;
-		t.target = target;
-		t.targetCount = targetCount;
-		t.x = x;
-		t.y = y;
-		t.z = z;
-		t.radius = radius;
-		t.timerMode = timerMode;
-		t.intervalMinutes = intervalMinutes;
-		t.gameHour = gameHour;
-		t.gameMinute = gameMinute;
-		t.gameDayInterval = gameDayInterval;
-		t.remindText = remindText;
-		t.progress = progress;
-		t.triggered = triggered;
-		t.createdAt = createdAt;
-		t.completedAt = completedAt;
-		t.visibility = visibility;
-		t.shareMode = shareMode;
-		return t;
-	}
-
 	/** 兜底：JSON / 网络数据里出现 null 或越界值时，恢复到安全默认值。 */
 	public void normalize() {
 		if (text == null) {

@@ -117,7 +117,6 @@ public final class I18n {
 		put("hud.hint", "点击任务即可完成 / 认领 · 按 %s 退出", "Click a task to complete or claim · %s to exit");
 		put("hud.more", "…还有 %d 条", "…and %d more");
 		put("hud.advancement", "成就 %s", "Advancement %s");
-		put("hud.need", " · 需要：%s", " · needs: %s");
 		put("dir.front", "正前", "ahead");
 		put("dir.frontRight", "右前", "front-right");
 		put("dir.frontLeft", "左前", "front-left");
@@ -138,9 +137,9 @@ public final class I18n {
 		put("ui.new", "新增", "New");
 		put("ui.edit", "改", "Edit");
 		put("ui.delete", "×", "×");
-		put("ui.showDone", "显示已完成", "Show completed");
-		put("ui.hideDone", "隐藏已完成", "Hide completed");
-		put("ui.clearDone", "清空已完成", "Clear completed");
+		put("ui.showDone", "显示已完成", "Show done");
+		put("ui.hideDone", "隐藏已完成", "Hide done");
+		put("ui.clearDone", "清空已完成", "Clear done");
 		put("ui.priority", "优先级：%s", "Priority: %s");
 		put("ui.type", "类型：%s", "Type: %s");
 		put("ui.timer", "提醒：%s", "Reminder: %s");
@@ -164,7 +163,6 @@ public final class I18n {
 		put("share.tagClaim", "[可认领]", "[claimable]");
 		put("share.tagLocked", "[未受邀]", "[locked]");
 		put("share.claimedToast", "已认领：%s", "Claimed: %s");
-		put("share.completedToast", "共享任务已完成：%s", "Shared task completed: %s");
 		put("edit.visibility", "可见性：%s", "Visibility: %s");
 		put("vis.personal", "仅个人", "Personal");
 		put("vis.shared", "共享", "Shared");
@@ -191,9 +189,8 @@ public final class I18n {
 				"This task type (advancement / timer) cannot be shared");
 
 		// 任务 CSV 导入 / 导出（issue #18）
-		put("csv.export", "导出 CSV", "Export CSV");
-		put("csv.import", "导入 CSV", "Import CSV");
-		put("csv.hint", "任务 CSV：config/easytaskmgr-tasks.csv", "Task CSV: config/easytaskmgr-tasks.csv");
+		put("csv.export", "导出 CSV", "Export");
+		put("csv.import", "导入 CSV", "Import");
 		put("csv.exported", "已导出 %d 条任务到 %s", "Exported %d task(s) to %s");
 		put("csv.imported", "已导入 %d 条任务", "Imported %d task(s)");
 		put("csv.importedSkip", "已导入 %d 条任务（跳过 %d 行）", "Imported %d task(s) (%d row(s) skipped)");

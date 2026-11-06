@@ -149,17 +149,6 @@ public final class TaskStore {
 		return list;
 	}
 
-	/** 需要共享给队友的任务（未完成且开启了共享）。 */
-	public synchronized List<Task> shared() {
-		List<Task> list = new ArrayList<>();
-		for (Task t : tasks) {
-			if (!t.done && t.shared) {
-				list.add(t.copyForShare());
-			}
-		}
-		return list;
-	}
-
 	public synchronized void clearCompleted() {
 		if (tasks.removeIf(t -> t.done)) {
 			markDirty();
