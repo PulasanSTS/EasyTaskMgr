@@ -10,6 +10,7 @@
 	"easytaskmgr.share.claim": "%s claimed %s's task: %s",
 	"easytaskmgr.share.complete": "%s completed %s's task: %s",
 	"easytaskmgr.share.partial": "%s finished their part of %s's task: %s (%d/%d)",
+	"easytaskmgr.share.publishMany": "%s shared %s … (%d tasks in total)",
 
 	"easytaskmgr.type.normal": "task",
 	"easytaskmgr.type.collect": "collect task",

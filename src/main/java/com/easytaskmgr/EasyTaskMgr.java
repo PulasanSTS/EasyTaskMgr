@@ -13,6 +13,7 @@ import com.easytaskmgr.net.AdvancementQueryC2S;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -87,7 +88,12 @@ public class EasyTaskMgr implements ModInitializer {
 		});
 
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> ShareStore.load(server));
-		ServerLifecycleEvents.SERVER_STOPPING.register(server -> ShareStore.save(server));
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+			SharedTasks.flushPublishBatches(server);
+			ShareStore.save(server);
+		});
+		// 发布提示的批处理（issue #21 第 2 点）：一次导入很多共享任务时合并成一条
+		ServerTickEvents.END_SERVER_TICK.register(SharedTasks::tickPublishBatches);
 
 		// 共享收集任务「共同完成」：客户端上报背包里见过的数量，服务端累加判定
 		ServerPlayNetworking.registerGlobalReceiver(ShareProgressC2S.TYPE, (payload, context) -> {

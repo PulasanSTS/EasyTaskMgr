@@ -15,7 +15,10 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -192,7 +195,7 @@ public final class SharedTasks {
 				modeName(entry.mode));
 		if (old == null || old.visibility != entry.visibility || old.mode != entry.mode
 				|| !Objects.equals(old.json, entry.json)) {
-			announcePublish(server, entry);
+			queuePublish(server, entry);
 		}
 	}
 
@@ -300,6 +303,95 @@ public final class SharedTasks {
 		}
 		dirty = false;
 		ShareStore.save(server);
+	}
+
+	/** 批量发布提示：一次导入 >3 条共享任务时合并成一条（issue #21 第 2 点）。 */
+	private static final int BATCH_WINDOW_TICKS = 10;
+	private static final int BATCH_SUMMARY_AT = 4;
+
+	private static final class PublishBatch {
+		final String name;
+		final List<Entry> entries = new ArrayList<>();
+		long due;
+
+		PublishBatch(String name) {
+			this.name = name;
+		}
+	}
+
+	private static final Map<UUID, PublishBatch> BATCHES = new LinkedHashMap<>();
+
+	/**
+	 * 把「发布共享任务」的提示先攒起来，等 0.5 秒后再发。
+	 *
+	 * <p>这样一次导入 20 条任务只会收到一条汇总提示；手动一条条发布时（≤3 条）仍然是逐条提示。
+	 */
+	private static void queuePublish(MinecraftServer server, Entry entry) {
+		PublishBatch batch = BATCHES.computeIfAbsent(entry.creator, k -> new PublishBatch(entry.creatorName));
+		batch.entries.add(entry);
+		batch.due = server.getTickCount() + BATCH_WINDOW_TICKS;
+	}
+
+	/** 由服务端 tick 事件驱动：到点的批次发出去。 */
+	public static void tickPublishBatches(MinecraftServer server) {
+		if (BATCHES.isEmpty()) {
+			return;
+		}
+		long now = server.getTickCount();
+		Iterator<Map.Entry<UUID, PublishBatch>> it = BATCHES.entrySet().iterator();
+		while (it.hasNext()) {
+			PublishBatch batch = it.next().getValue();
+			if (now < batch.due) {
+				continue;
+			}
+			it.remove();
+			flushBatch(server, batch);
+		}
+	}
+
+	/** 停机前把没发出去的批次补发，避免提示丢失。 */
+	public static void flushPublishBatches(MinecraftServer server) {
+		for (PublishBatch batch : BATCHES.values()) {
+			flushBatch(server, batch);
+		}
+		BATCHES.clear();
+	}
+
+	private static void flushBatch(MinecraftServer server, PublishBatch batch) {
+		if (batch.entries.size() < BATCH_SUMMARY_AT) {
+			for (Entry entry : batch.entries) {
+				announcePublish(server, entry);
+			}
+			return;
+		}
+		EasyTaskMgr.LOGGER.info("合并发布提示：{} 发布了 {} 条共享任务", batch.name, batch.entries.size());
+		MutableComponent titles = Component.empty();
+		for (int i = 0; i < 3 && i < batch.entries.size(); i++) {
+			if (i > 0) {
+				titles.append(Component.literal("、"));
+			}
+			Entry entry = batch.entries.get(i);
+			Object arg = titleArg(entry);
+			titles.append(arg instanceof Component component ? component : Component.literal(String.valueOf(arg)));
+		}
+		MutableComponent message = Component.literal("[EasyTaskMgr] ").withStyle(ChatFormatting.AQUA)
+				.append(Component.translatable("easytaskmgr.share.publishMany", batch.name, titles,
+						batch.entries.size()).withStyle(ChatFormatting.GREEN));
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			if (!ServerPlayNetworking.canSend(player, ShareSnapshotS2C.TYPE)) {
+				continue;
+			}
+			boolean visible = false;
+			for (Entry entry : batch.entries) {
+				if (entry.visibleTo(player)) {
+					visible = true;
+					break;
+				}
+			}
+			if (visible) {
+				player.sendSystemMessage(message);
+			}
+		}
 	}
 
 	/** 发布提示：{@code xxx 发布了共享任务「yyy」}。 */

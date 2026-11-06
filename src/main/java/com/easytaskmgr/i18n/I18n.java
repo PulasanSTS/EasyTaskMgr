@@ -192,10 +192,12 @@ public final class I18n {
 		put("csv.export", "导出 CSV", "Export");
 		put("csv.import", "导入 CSV", "Import");
 		put("csv.exported", "已导出 %d 条任务到 %s", "Exported %d task(s) to %s");
-		put("csv.imported", "已导入 %d 条任务", "Imported %d task(s)");
-		put("csv.importedSkip", "已导入 %d 条任务（跳过 %d 行）", "Imported %d task(s) (%d row(s) skipped)");
 		put("csv.missing", "找不到 %s，请先导出一份", "%s not found — export one first");
 		put("csv.failed", "CSV 操作失败，详见日志", "CSV operation failed — see the log");
+		put("csv.importedMixed", "导入 %d 条任务：共享 %d 条、本地 %d 条", "Imported %d task(s): %d shared, %d local");
+		put("csv.downgradedSuffix", "（%d 条因服务端未装模组或类型不支持，已降级为本地任务）",
+				" (%d downgraded to local: no server mod, or the type cannot be shared)");
+		put("csv.skippedSuffix", "（跳过 %d 行）", " (%d row(s) skipped)");
 		put("list.donePrefix", "[已完成] ", "[Done] ");
 		put("list.footer", "%s 快速添加 · %s 列表 · %s 设置 · %s 隐藏 HUD",
 				"%s quick add · %s list · %s settings · %s hide HUD");

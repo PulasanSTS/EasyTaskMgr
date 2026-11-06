@@ -365,6 +365,13 @@ public final class ClientTasks {
 	}
 
 	/** 从 CSV 追加任务；已存在的任务不动，坏行会跳过并计数。 */
+	/**
+	 * 从 CSV 追加任务；坏行跳过。
+	 *
+	 * <p>带 `visibility` 列且 > 0 的行会走共享发布（issue #21 第 2 点）：
+	 * 服务端装了同版本模组时直接发布；没装、或者类型是成就 / 时间提醒时降级成本地任务并计数。
+	 * 一次导入的共享任务超过 3 条时，服务端会把发布提示合并成一条（见 {@code SharedTasks} 的批处理）。
+	 */
 	public static String importCsv() {
 		Path path = csvFile();
 		if (!Files.isRegularFile(path)) {
@@ -375,19 +382,39 @@ public final class ClientTasks {
 		try {
 			String text = Files.readString(path, StandardCharsets.UTF_8);
 			TaskCsv.Result result = TaskCsv.fromCsv(text);
+			int local = 0;
+			int shared = 0;
+			int downgraded = 0;
 			for (Task task : result.tasks()) {
 				// 重新生成 id，重复导入同一份文件不会互相覆盖
 				task.id = UUID.randomUUID().toString();
 				task.normalize();
+				boolean canShare = task.type != TaskType.ADVANCEMENT && task.type != TaskType.TIMER;
+				if (task.visibility > 0 && canShare && ClientShared.available()) {
+					ClientShared.publish(task);
+					shared++;
+					continue;
+				}
+				if (task.visibility > 0) {
+					// 服务端没装模组 / 该类型不支持共享：降级为本地任务
+					downgraded++;
+				}
+				task.visibility = 0;
 				TaskStore.get().add(task);
+				local++;
 			}
 			TaskStore.get().save();
 			ClientNet.markDirty();
-			String msg = result.skipped() > 0
-					? I18n.t("csv.importedSkip", result.tasks().size(), result.skipped())
-					: I18n.t("csv.imported", result.tasks().size());
+			String msg = I18n.t("csv.importedMixed", local + shared, shared, local);
+			if (downgraded > 0) {
+				msg += I18n.t("csv.downgradedSuffix", downgraded);
+			}
+			if (result.skipped() > 0) {
+				msg += I18n.t("csv.skippedSuffix", result.skipped());
+			}
 			Notifier.info(msg);
-			EasyTaskMgr.LOGGER.info("从 {} 导入 {} 条任务（跳过 {} 行）", path, result.tasks().size(), result.skipped());
+			EasyTaskMgr.LOGGER.info("从 {} 导入 {} 条任务（共享 {}、本地 {}、降级 {}、跳过 {} 行）",
+					path, local + shared, shared, local, downgraded, result.skipped());
 			return msg;
 		} catch (Exception e) {
 			EasyTaskMgr.LOGGER.error("导入 CSV 失败：{}", path, e);
