@@ -149,6 +149,10 @@ public class Task {
 		if (shareMode < 0 || shareMode > 4) {
 			shareMode = shareAll ? 3 : 2;
 		}
+		// 「共同完成」只对收集任务有意义：其它类型拿到 4 会让任务永远完不成，这里统一收回到默认值
+		if (type != TaskType.COLLECT && shareMode == 4) {
+			shareMode = 2;
+		}
 		if (targetCount < 1) {
 			targetCount = 1;
 		}

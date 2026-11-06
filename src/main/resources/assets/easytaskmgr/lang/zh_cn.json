@@ -10,6 +10,7 @@
 	"easytaskmgr.share.claim": "%s 认领了 %s 发布的「%s」",
 	"easytaskmgr.share.complete": "%s 完成了 %s 发布的「%s」",
 	"easytaskmgr.share.partial": "%s 完成了 %s 发布的「%s」的自己的部分（%d/%d）",
+	"easytaskmgr.share.publishMany": "%s 创建了 %s 等 %d 条共享任务",
 
 	"easytaskmgr.type.normal": "普通任务",
 	"easytaskmgr.type.collect": "收集任务",

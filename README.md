@@ -126,9 +126,15 @@ Todos 3
 ### Importing / exporting tasks (CSV)
 
 - Press `N` to open the task list; the right end of the bottom row has **Export CSV** and **Import CSV**, using the fixed file `.minecraft/config/easytaskmgr-tasks.csv`;
-- The exported header is `text, type, target, count, x, y, z, radius, timerMode, intervalMinutes, gameHour, gameMinute, gameDayInterval, priority, done, remindText`;
+- The exported header is `text, type, target, count, x, y, z, radius, timerMode, intervalMinutes, gameHour, gameMinute, gameDayInterval, priority, done, remindText, visibility, shareMode`;
 - You can edit the table in Excel or a text editor and click "Import CSV" — the rows are **appended** as tasks (each gets a fresh id, so importing the same file twice does not overwrite anything);
-- Fields containing commas, quotes or line breaks are handled correctly; rows with empty text or a missing `target` for collect / advancement tasks are skipped, and the result message tells you how many were ignored.
+- Fields containing commas, quotes or line breaks are handled correctly; rows with empty text or a missing `target` for collect / advancement tasks are skipped, and the result message tells you how many were ignored;
+- Two extra columns at the end drive **shared tasks**: `visibility` (`0` personal / `1` shared / `2` special) and `shareMode` (`0` any claimant / `1` all claimants / `2` any incl. creator / `3` all incl. creator / `4` combined count);
+  rows with `visibility > 0` are published to the server instead of being saved locally (the server must run the same mod version);
+  advancement / timed-reminder rows are downgraded to local tasks and counted in the result message;
+- When one import publishes more than 3 shared tasks, the chat only gets a single summary line
+  (`xxx shared A、B、C … (N tasks in total)`) instead of one line per task.
+
 ## Configuration & data
 
 | File | Contents |
@@ -366,9 +372,14 @@ EasyTaskMgr 把这些事变成游戏内的待办清单，**在条件满足时主
 ### 任务导入 / 导出（CSV）
 
 - 按 `N` 打开待办列表，底排最右侧是 **导出 CSV** / **导入 CSV** 两个按钮，文件固定是 `.minecraft/config/easytaskmgr-tasks.csv`；
-- 导出的表头：`text, type, target, count, x, y, z, radius, timerMode, intervalMinutes, gameHour, gameMinute, gameDayInterval, priority, done, remindText`；
+- 导出的表头：`text, type, target, count, x, y, z, radius, timerMode, intervalMinutes, gameHour, gameMinute, gameDayInterval, priority, done, remindText, visibility, shareMode`；
 - 表格可以用 Excel / 记事本直接改，改完点「导入 CSV」就会把行**追加**成任务（每条都会分配新 id，重复导入不会互相覆盖）；
-- 字段里带逗号、引号、换行也能正确解析；收集 / 成就任务缺 `target` 或文本为空的行会被跳过，并在提示里告诉你有几行没导入。
+- 字段里带逗号、引号、换行也能正确解析；收集 / 成就任务缺 `target` 或文本为空的行会被跳过，并在提示里告诉你有几行没导入；
+- 末尾两列决定**共享任务**：`visibility`（`0` 仅个人 / `1` 共享 / `2` 特殊共享）、`shareMode`（`0` 任一认领者 / `1` 所有认领者 / `2` 任一含发布者 / `3` 所有含发布者 / `4` 共同完成）；
+  `visibility > 0` 的行会直接发布到服务端而不是存本地（需要服务端装同一版本模组），
+  成就 / 时间提醒类型的行会降级为本地任务并在提示里计数；
+- 一次导入发布的共享任务超过 3 条时，聊天栏只发一条汇总（`xxx 创建了 A、B、C 等 N 条共享任务`），不会刷屏。
+
 ## 配置与数据
 
 | 文件 | 内容 |

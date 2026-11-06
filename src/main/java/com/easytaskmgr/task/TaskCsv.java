@@ -16,7 +16,7 @@ import java.util.List;
  */
 public final class TaskCsv {
 	public static final String HEADER = "text,type,target,count,x,y,z,radius,timerMode,"
-			+ "intervalMinutes,gameHour,gameMinute,gameDayInterval,priority,done,remindText";
+			+ "intervalMinutes,gameHour,gameMinute,gameDayInterval,priority,done,remindText,visibility,shareMode";
 
 	/** 导入结果：解析出的任务 + 跳过的行数。 */
 	public record Result(List<Task> tasks, int skipped) {
@@ -44,7 +44,9 @@ public final class TaskCsv {
 					Integer.toString(task.gameDayInterval),
 					Integer.toString(task.priority),
 					Boolean.toString(task.done),
-					task.remindText)).append("\r\n");
+					task.remindText,
+					Integer.toString(task.visibility),
+					Integer.toString(task.shareMode))).append("\r\n");
 		}
 		return sb.toString();
 	}
@@ -98,6 +100,9 @@ public final class TaskCsv {
 		task.priority = priority(field(row, 13));
 		task.done = "true".equalsIgnoreCase(field(row, 14).trim());
 		task.remindText = field(row, 15).trim();
+		// 新增列（issue #21 第 2 点）：可见性 0/1/2、完成条件 0..4；老文件没有这两列时按「仅个人」处理
+		task.visibility = Math.max(0, Math.min(2, intOr(field(row, 16), 0)));
+		task.shareMode = intOr(field(row, 17), -1);
 		// 收集 / 坐标 / 成就任务缺关键字段时视为坏行，避免导入一堆空任务
 		switch (task.type) {
 			case COLLECT, ADVANCEMENT -> {
