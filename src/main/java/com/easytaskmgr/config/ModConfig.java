@@ -36,8 +36,6 @@ public final class ModConfig {
 	public boolean showSpeed = true;
 	/** 坐标任务是否在 HUD 上显示指向箭头。 */
 	public boolean showDirectionArrow = true;
-	/** 成就前置条件 UI（暂时关闭，代码保留）。 */
-	public boolean advancementRequirements = false;
 	/** HUD 交互模式是否开启（开启后鼠标释放，点击普通任务可完成）。 */
 	public boolean hudInteractive = false;
 	/** 一个游戏日多少 tick（整合包改过昼夜周期时调整，默认 24000）。 */
@@ -93,7 +91,6 @@ public final class ModConfig {
 		showDistance = o.showDistance;
 		showSpeed = o.showSpeed;
 		showDirectionArrow = o.showDirectionArrow;
-		advancementRequirements = o.advancementRequirements;
 		hudInteractive = o.hudInteractive;
 		ticksPerDay = o.ticksPerDay >= 2000 ? o.ticksPerDay : 24000;
 		language = (o.language != null && (o.language.equals("zh_cn") || o.language.equals("en_us"))) ? o.language : "auto";

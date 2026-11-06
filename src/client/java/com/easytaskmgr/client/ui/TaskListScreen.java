@@ -29,6 +29,9 @@ public class TaskListScreen extends Screen {
 	private static final int TEXT_WIDTH = 210;
 
 	private final Screen parent;
+	/** CSV 操作结果（屏幕里看不到聊天栏，用底部一行临时显示）。 */
+	private String csvStatus = "";
+	private long csvStatusUntil;
 	private int scrollOffset;
 	private boolean showDone;
 	private int visibleRows = 4;
@@ -122,26 +125,35 @@ public class TaskListScreen extends Screen {
 		}
 
 		int bottom = height - 34;
+		// 底排按钮按顺序排布：显示已完成 / 新增 / 设置 / 关闭 / 清空已完成 / 导出 CSV / 导入 CSV
+		// 共 420px 可用宽度（cx±210），间距 2px，正好能放下 7 个按钮（issue #21）
+		int x = cx - 210;
+		int gap = 2;
+
 		addRenderableWidget(Button.builder(Component.literal(showDone ? I18n.t("ui.hideDone") : I18n.t("ui.showDone")), b -> {
 			showDone = !showDone;
 			scrollOffset = 0;
 			rebuildWidgets();
-		}).bounds(cx - 210, bottom, 88, 20).build());
+		}).bounds(x, bottom, 80, 20).build());
+		x += 80 + gap;
 
 		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.new")), b -> {
 			if (minecraft != null) {
 				minecraft.setScreenAndShow(new TaskEditScreen(new Task(), true, this));
 			}
-		}).bounds(cx - 114, bottom, 44, 20).build());
+		}).bounds(x, bottom, 40, 20).build());
+		x += 40 + gap;
 
 		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.settings")), b -> {
 			if (minecraft != null) {
 				minecraft.setScreenAndShow(new ConfigScreen(this));
 			}
-		}).bounds(cx - 62, bottom, 44, 20).build());
+		}).bounds(x, bottom, 56, 20).build());
+		x += 56 + gap;
 
 		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.close")), b -> onClose())
-				.bounds(cx - 10, bottom, 48, 20).build());
+				.bounds(x, bottom, 44, 20).build());
+		x += 44 + gap;
 
 		addRenderableWidget(Button.builder(Component.literal(I18n.t("ui.clearDone")), b -> {
 			TaskStore.get().clearCompleted();
@@ -149,7 +161,22 @@ public class TaskListScreen extends Screen {
 			ClientNet.markDirty();
 			scrollOffset = 0;
 			rebuildWidgets();
-		}).bounds(cx + 46, bottom, 86, 20).build());
+		}).bounds(x, bottom, 70, 20).build());
+		x += 70 + gap;
+
+		// 任务 CSV 导入 / 导出（issue #18 / #21）：从设置页挪到列表底排，顺手就能点
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("csv.export")), b -> {
+			csvStatus = ClientTasks.exportCsv();
+			csvStatusUntil = System.currentTimeMillis() + 5000L;
+		}).bounds(x, bottom, 58, 20).build());
+		x += 58 + gap;
+
+		addRenderableWidget(Button.builder(Component.literal(I18n.t("csv.import")), b -> {
+			csvStatus = ClientTasks.importCsv();
+			csvStatusUntil = System.currentTimeMillis() + 5000L;
+			scrollOffset = 0;
+			rebuildWidgets();
+		}).bounds(x, bottom, 58, 20).build());
 	}
 
 	@Override
@@ -224,11 +251,16 @@ public class TaskListScreen extends Screen {
 			graphics.fill(barX, thumbTop, barX + 3, thumbTop + thumbHeight, 0xAAFFD54F);
 		}
 
-		graphics.text(font, I18n.t("list.footer",
-				Keybinds.QUICK_ADD.getTranslatedKeyMessage().getString(),
-				Keybinds.OPEN_LIST.getTranslatedKeyMessage().getString(),
-				Keybinds.OPEN_CONFIG.getTranslatedKeyMessage().getString(),
-				Keybinds.TOGGLE_HUD.getTranslatedKeyMessage().getString()), 6, height - 12, 0xFF78909C);
+		// CSV 操作结果：屏幕打开时聊天栏/Toast 都看不到，所以临时占用底部这行显示 5 秒
+		if (csvStatus != null && !csvStatus.isEmpty() && System.currentTimeMillis() < csvStatusUntil) {
+			graphics.text(font, csvStatus, 6, height - 12, 0xFF8BC34A);
+		} else {
+			graphics.text(font, I18n.t("list.footer",
+					Keybinds.QUICK_ADD.getTranslatedKeyMessage().getString(),
+					Keybinds.OPEN_LIST.getTranslatedKeyMessage().getString(),
+					Keybinds.OPEN_CONFIG.getTranslatedKeyMessage().getString(),
+					Keybinds.TOGGLE_HUD.getTranslatedKeyMessage().getString()), 6, height - 12, 0xFF78909C);
+		}
 
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}

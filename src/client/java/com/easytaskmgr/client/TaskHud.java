@@ -53,10 +53,6 @@ public final class TaskHud implements HudElement {
 		interactive = value;
 	}
 
-	public static int hitCount() {
-		return HITS.size();
-	}
-
 	private static Row row(String text, int color, String taskId) {
 		return new Row("", 0, text, color, taskId, null);
 	}
