@@ -1,5 +1,3 @@
-replaced block at 356..365 for ### HUD 示例
-replaced block at 115..124 for ### HUD example
 # EasyTaskMgr
 
 <details>

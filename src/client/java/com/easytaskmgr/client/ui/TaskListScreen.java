@@ -29,6 +29,9 @@ public class TaskListScreen extends Screen {
 	private static final int TEXT_WIDTH = 210;
 
 	private final Screen parent;
+	/** CSV 操作结果（屏幕里看不到聊天栏，用底部一行临时显示）。 */
+	private String csvStatus = "";
+	private long csvStatusUntil;
 	private int scrollOffset;
 	private boolean showDone;
 	private int visibleRows = 4;
@@ -163,12 +166,14 @@ public class TaskListScreen extends Screen {
 
 		// 任务 CSV 导入 / 导出（issue #18 / #21）：从设置页挪到列表底排，顺手就能点
 		addRenderableWidget(Button.builder(Component.literal(I18n.t("csv.export")), b -> {
-			ClientTasks.exportCsv();
+			csvStatus = ClientTasks.exportCsv();
+			csvStatusUntil = System.currentTimeMillis() + 5000L;
 		}).bounds(x, bottom, 58, 20).build());
 		x += 58 + gap;
 
 		addRenderableWidget(Button.builder(Component.literal(I18n.t("csv.import")), b -> {
-			ClientTasks.importCsv();
+			csvStatus = ClientTasks.importCsv();
+			csvStatusUntil = System.currentTimeMillis() + 5000L;
 			scrollOffset = 0;
 			rebuildWidgets();
 		}).bounds(x, bottom, 58, 20).build());
@@ -246,11 +251,16 @@ public class TaskListScreen extends Screen {
 			graphics.fill(barX, thumbTop, barX + 3, thumbTop + thumbHeight, 0xAAFFD54F);
 		}
 
-		graphics.text(font, I18n.t("list.footer",
-				Keybinds.QUICK_ADD.getTranslatedKeyMessage().getString(),
-				Keybinds.OPEN_LIST.getTranslatedKeyMessage().getString(),
-				Keybinds.OPEN_CONFIG.getTranslatedKeyMessage().getString(),
-				Keybinds.TOGGLE_HUD.getTranslatedKeyMessage().getString()), 6, height - 12, 0xFF78909C);
+		// CSV 操作结果：屏幕打开时聊天栏/Toast 都看不到，所以临时占用底部这行显示 5 秒
+		if (csvStatus != null && !csvStatus.isEmpty() && System.currentTimeMillis() < csvStatusUntil) {
+			graphics.text(font, csvStatus, 6, height - 12, 0xFF8BC34A);
+		} else {
+			graphics.text(font, I18n.t("list.footer",
+					Keybinds.QUICK_ADD.getTranslatedKeyMessage().getString(),
+					Keybinds.OPEN_LIST.getTranslatedKeyMessage().getString(),
+					Keybinds.OPEN_CONFIG.getTranslatedKeyMessage().getString(),
+					Keybinds.TOGGLE_HUD.getTranslatedKeyMessage().getString()), 6, height - 12, 0xFF78909C);
+		}
 
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}
