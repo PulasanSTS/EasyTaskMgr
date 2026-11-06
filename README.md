@@ -80,7 +80,7 @@ Details:
 ## Installation
 
 1. Install **Fabric Loader** (≥ 0.20.1) for **Minecraft 26.3**;
-2. Put [Fabric API](https://modrinth.com/mod/fabric-api) (the 26.3 build) and `easytaskmgr-1.0.0.jar` together into `.minecraft/mods`;
+2. Put [Fabric API](https://modrinth.com/mod/fabric-api) (the 26.3 build) and `easytaskmgr-1.0.1.jar` together into `.minecraft/mods`;
 3. Launch the game — if you see "Todos" in the top-right corner, the installation worked.
 
 > **Multiplayer servers**: installing the mod on the client alone gives you basic todos and reminders; to enable shared tasks, **the server must also have** this mod
@@ -247,7 +247,7 @@ src/client/java/com/easytaskmgr/client/
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.3-62b47a?style=flat-square)](https://www.minecraft.net/)
 [![Fabric](https://img.shields.io/badge/Fabric-0.20.1-dbb69c?style=flat-square)](https://fabricmc.net/)
 [![Java](https://img.shields.io/badge/Java-25-e76f00?style=flat-square)](https://adoptium.net/)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue?style=flat-square)](https://github.com/PulasanSTS/EasyTaskMgr/releases)
+[![Version](https://img.shields.io/badge/version-1.0.1-blue?style=flat-square)](https://github.com/PulasanSTS/EasyTaskMgr/releases)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 ---
@@ -326,7 +326,7 @@ EasyTaskMgr 把这些事变成游戏内的待办清单，**在条件满足时主
 ## 安装
 
 1. 安装 **Minecraft 26.3** 对应的 **Fabric Loader**（≥ 0.20.1）；
-2. 把 [Fabric API](https://modrinth.com/mod/fabric-api)（26.3 版本）和 `easytaskmgr-1.0.0.jar` 一起放进 `.minecraft/mods`；
+2. 把 [Fabric API](https://modrinth.com/mod/fabric-api)（26.3 版本）和 `easytaskmgr-1.0.1.jar` 一起放进 `.minecraft/mods`；
 3. 启动游戏，右上角出现「待办清单」即安装成功。
 
 > **多人服务器**：客户端装即可用普通待办与提醒功能；要让共享任务可用，**服务端也要装**本模组
