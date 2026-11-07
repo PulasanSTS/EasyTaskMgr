@@ -1,0 +1,11 @@
+# 自动升级固定到 SHA 的 GitHub Actions（升级后仍保持 SHA 固定）
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
