@@ -22,6 +22,8 @@ import java.util.List;
 public class ListScreen extends Screen {
 	private static final int ROW_HEIGHT = 20;
 	private int scroll;
+	/** 是否显示已完成段（Fabric 版有开关）。 */
+	private static boolean showDone = true;
 	private String status = "";
 	private long statusUntil;
 
@@ -35,21 +37,29 @@ public class ListScreen extends Screen {
 	@Override
 	protected void init() {
 		int y = height - 26;
-		int x = width / 2 - 210;
+		int x = width / 2 - 195;
 		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.new")), b -> minecraft.setScreen(new EditScreen(null)))
-				.bounds(x, y, 80, 20).build());
+				.bounds(x, y, 60, 20).build());
 		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.settings")), b -> minecraft.setScreen(new ConfigScreen()))
-				.bounds(x + 82, y, 40, 20).build());
+				.bounds(x + 62, y, 50, 20).build());
+		addRenderableWidget(Button.builder(doneToggleLabel(), b -> {
+			showDone = !showDone;
+			b.setMessage(doneToggleLabel());
+		}).bounds(x + 114, y, 70, 20).build());
 		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.clearDone")), b -> {
 			TaskStore.get().clearCompleted();
 			TaskStore.get().save();
-		}).bounds(x + 124, y, 90, 20).build());
+		}).bounds(x + 186, y, 60, 20).build());
 		addRenderableWidget(Button.builder(Component.literal("CSV ↑"), b -> exportCsv())
-				.bounds(x + 216, y, 70, 20).build());
+				.bounds(x + 248, y, 50, 20).build());
 		addRenderableWidget(Button.builder(Component.literal("CSV ↓"), b -> importCsv())
-				.bounds(x + 288, y, 70, 20).build());
+				.bounds(x + 300, y, 50, 20).build());
 		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.close")), b -> onClose())
-				.bounds(x + 360, y, 60, 20).build());
+				.bounds(x + 352, y, 50, 20).build());
+	}
+
+	private static Component doneToggleLabel() {
+		return Component.literal(ClientUtil.t(showDone ? "ui.hideDone" : "ui.showDone"));
 	}
 
 	private static Path csvFile() {
@@ -105,6 +115,9 @@ public class ListScreen extends Screen {
 		for (ClientShared.Entry entry : ClientShared.all()) {
 			rows.add(new Row(y, "[S] " + entry.owner + " · " + ClientTasks.title(entry.task), entry.id, true, entry.done));
 			y += ROW_HEIGHT;
+		}
+		if (!showDone) {
+			return rows;
 		}
 		for (Task task : ClientTasks.completed()) {
 			rows.add(new Row(y, ClientUtil.t("list.donePrefix") + ClientTasks.title(task), task.id, false, true));
