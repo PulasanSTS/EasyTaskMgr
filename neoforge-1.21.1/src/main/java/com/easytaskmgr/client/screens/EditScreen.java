@@ -38,6 +38,9 @@ public class EditScreen extends Screen {
 		// 编辑副本：取消时不会把改动留在仓库对象上（review #18）
 		this.task = existing == null ? new Task() : copyOf(existing);
 		this.creating = existing == null;
+		if (this.task.shareMode < 0) {
+			this.task.shareMode = com.easytaskmgr.share.SharedTasks.MODE_ANY_CREATOR;
+		}
 	}
 
 	@Override
@@ -64,27 +67,27 @@ public class EditScreen extends Screen {
 		addRenderableWidget(Button.builder(typeLabel(), b -> {
 			task.type = nextType(task.type);
 			b.setMessage(typeLabel());
-		}).bounds(cx - 110, y, 110, 20).build());
+		}).bounds(cx - 110, y, 120, 20).build());
 		addRenderableWidget(Button.builder(priorityLabel(), b -> {
 			task.priority = Priority.byWeight(task.priority).next().weight();
 			b.setMessage(priorityLabel());
-		}).bounds(cx + 4, y, 110, 20).build());
+		}).bounds(cx + 14, y, 120, 20).build());
 		y += 24;
 		addRenderableWidget(Button.builder(timerLabel(), b -> {
 			task.timerMode = nextTimer(task.timerMode);
 			b.setMessage(timerLabel());
-		}).bounds(cx - 110, y, 110, 20).build());
+		}).bounds(cx - 110, y, 120, 20).build());
 		addRenderableWidget(Button.builder(visibilityLabel(), b -> {
 			task.visibility = task.visibility >= 2 ? 0 : task.visibility + 1;
 			b.setMessage(visibilityLabel());
-		}).bounds(cx + 4, y, 110, 20).build());
+		}).bounds(cx + 14, y, 120, 20).build());
 		y += 24;
 		addRenderableWidget(Button.builder(shareLabel(), b -> {
 			task.shareMode = (task.shareMode + 1) % 5;
 			b.setMessage(shareLabel());
-		}).bounds(cx - 110, y, 110, 20).build());
+		}).bounds(cx - 110, y, 120, 20).build());
 		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.save")), b -> save())
-				.bounds(cx + 4, y, 110, 20).build());
+				.bounds(cx + 14, y, 120, 20).build());
 		y += 24;
 		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.cancel")), b -> onClose())
 				.bounds(cx - 110, y, 220, 20).build());
