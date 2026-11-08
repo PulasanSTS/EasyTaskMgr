@@ -13,7 +13,16 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.level.block.ShulkerBoxBlock;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -88,6 +97,8 @@ public final class SharedTasks {
 		public int mode = MODE_ANY_CREATOR;
 		/** 收集任务的目标数量（{@link #MODE_COMBINED} 用）。 */
 		public int targetCount = 1;
+		/** 收集任务目标物品 id（服务端校验上报数量用）。 */
+		public String target = "";
 		/** 任务类型（成就任务不再支持共享，快照里会被跳过）。 */
 		public TaskType type = TaskType.NORMAL;
 		public final Set<String> invited = new LinkedHashSet<>();
@@ -153,6 +164,14 @@ public final class SharedTasks {
 
 	/** 有未落盘的改动（见 {@link #saveIfDirty}）。 */
 	private static boolean dirty;
+	/** 本次操作是否改动了共享表（决定要不要广播）。 */
+	private static boolean changed;
+
+	public static boolean takeChanged() {
+		boolean value = changed;
+		changed = false;
+		return value;
+	}
 
 	private SharedTasks() {
 	}
@@ -160,6 +179,10 @@ public final class SharedTasks {
 	/** 发布任务；内容有变化时给相关玩家发提示。 */
 	public static void publish(MinecraftServer server, ServerPlayer player, Task task) {
 		if (task == null || task.visibility == 0) {
+			return;
+		}
+		if (task.id == null || task.id.isBlank() || task.id.length() > 64) {
+			EasyTaskMgr.LOGGER.warn("拒绝发布：任务 id 非法（{}）", task.id);
 			return;
 		}
 		// 成就 / 时间提醒任务的多人支持已移除（issue #4、#13）：服务端直接忽略
@@ -183,11 +206,17 @@ public final class SharedTasks {
 		}
 		entry.targetCount = Math.max(1, task.targetCount);
 		entry.type = task.type;
+		entry.target = task.target == null ? "" : task.target;
 		Entry old = BY_ID.get(entry.id);
+		if (old != null && !old.creator.equals(entry.creator)) {
+			EasyTaskMgr.LOGGER.warn("拒绝发布：任务 {} 属于 {}，不是 {}", entry.id, old.creatorName, entry.creatorName);
+			return;
+		}
 		if (old != null) {
 			entry.invited.addAll(old.invited);
 			entry.claimed.addAll(old.claimed);
 			// 完成条件没变就保留已上报的进度与已统计的数量，变了就清零重来
+			entry.done = old.done;
 			if (old.mode == entry.mode) {
 				entry.completedBy.addAll(old.completedBy);
 				entry.maxCounts.putAll(old.maxCounts);
@@ -195,6 +224,7 @@ public final class SharedTasks {
 		}
 		BY_ID.put(entry.id, entry);
 		dirty = true;
+		changed = true;
 		EasyTaskMgr.LOGGER.info("{} 发布共享任务 {}（{}，完成条件={}）", entry.creatorName, entry.id, entry.title,
 				modeName(entry.mode));
 		if (old == null || old.visibility != entry.visibility || old.mode != entry.mode
@@ -219,6 +249,7 @@ public final class SharedTasks {
 		}
 		entry.claimed.add(player.getUUID());
 		dirty = true;
+		changed = true;
 		EasyTaskMgr.LOGGER.info("{} 认领了 {} 发布的共享任务 {}", name, entry.creatorName, entry.id);
 		announceClaim(server, entry, name);
 	}
@@ -230,6 +261,7 @@ public final class SharedTasks {
 		}
 		entry.invited.add(target);
 		dirty = true;
+		changed = true;
 	}
 
 	/**
@@ -252,6 +284,7 @@ public final class SharedTasks {
 		}
 		entry.completedBy.add(uuid);
 		dirty = true;
+		changed = true;
 		String name = player.getName().getString();
 		boolean finished = !requiresAll(entry.mode) || entry.completedBy.containsAll(entry.participants());
 		EasyTaskMgr.LOGGER.info("{} 完成共享任务 {}（{}/{}，{}）", name, entry.id,
@@ -278,12 +311,16 @@ public final class SharedTasks {
 		if (!entry.claimed.contains(uuid) && !entry.creator.equals(uuid)) {
 			return;
 		}
+		// 用服务端自己数的背包数量封顶，客户端伪造的数量不会生效
+		int real = countItem(player, entry.target);
+		count = Math.min(count, real);
 		int previous = entry.maxCounts.getOrDefault(uuid, 0);
 		if (count <= previous) {
 			return;
 		}
 		entry.maxCounts.put(uuid, count);
 		dirty = true;
+		changed = true;
 		int sum = entry.sumCounts();
 		if (sum >= entry.targetCount) {
 			entry.done = true;
@@ -297,6 +334,7 @@ public final class SharedTasks {
 		if (entry != null && entry.creator.equals(player.getUUID())) {
 			BY_ID.remove(id);
 			dirty = true;
+		changed = true;
 		}
 	}
 
@@ -306,7 +344,10 @@ public final class SharedTasks {
 			return;
 		}
 		dirty = false;
-		ShareStore.save(server);
+		if (!ShareStore.save(server)) {
+			dirty = true;
+		changed = true;
+		}
 	}
 
 	/** 批量发布提示：一次导入 >3 条共享任务时合并成一条（issue #21 第 2 点）。 */
@@ -456,6 +497,38 @@ public final class SharedTasks {
 		};
 	}
 
+	/** 服务端数玩家背包里的物品数量（含副手与潜影盒）。 */
+	static int countItem(ServerPlayer player, String itemId) {
+		if (itemId == null || itemId.isBlank()) {
+			return 0;
+		}
+		Identifier key = Identifier.tryParse(itemId);
+		Item item = key == null ? null : BuiltInRegistries.ITEM.getValue(key);
+		if (item == null) {
+			return 0;
+		}
+		int total = 0;
+		for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
+			total += stack.is(item) ? stack.getCount() : 0;
+		}
+		total += player.getOffhandItem().is(item) ? player.getOffhandItem().getCount() : 0;
+		for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
+			if (!(stack.getItem() instanceof BlockItem blockItem)
+					|| !(blockItem.getBlock() instanceof ShulkerBoxBlock)) {
+				continue;
+			}
+			ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
+			if (contents == null) {
+				continue;
+			}
+			NonNullList<ItemStack> inner = NonNullList.withSize(27, ItemStack.EMPTY);
+			contents.copyInto(inner);
+			for (ItemStack stack2 : inner) {
+				total += stack2.is(item) ? stack2.getCount() : 0;
+			}
+		}
+		return total;
+	}
 	/** 把客户端传来的完成条件收敛到合法范围。 */
 	public static int normalizeMode(int mode) {
 		return mode >= MODE_ANY && mode <= MODE_COMBINED ? mode : MODE_ANY_CREATOR;

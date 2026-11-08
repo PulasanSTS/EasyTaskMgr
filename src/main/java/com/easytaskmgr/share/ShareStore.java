@@ -31,6 +31,12 @@ public final class ShareStore {
 	private static final String FILE_NAME = "easytaskmgr_share.json";
 	/** 存档格式版本 2：完成条件改成 {@code mode}（0..4），新增 {@code targetCount} / {@code maxCounts} / {@code type}。 */
 	private static final int VERSION = 2;
+	/** 读档失败后不再覆盖磁盘文件。 */
+	private static boolean loadFailed;
+
+	public static boolean loadFailed() {
+		return loadFailed;
+	}
 
 	private ShareStore() {
 	}
@@ -41,6 +47,9 @@ public final class ShareStore {
 
 	/** 启动时调用：读回条目，把「已完成」的任务也一并恢复，避免重启后列表闪一下。 */
 	public static void load(MinecraftServer server) {
+		// 切世界时清空静态表
+		SharedTasks.BY_ID.clear();
+		loadFailed = false;
 		Path path = file(server);
 		if (!Files.isRegularFile(path)) {
 			EasyTaskMgr.LOGGER.info("共享任务存档不存在，跳过恢复：{}", path);
@@ -55,6 +64,7 @@ public final class ShareStore {
 				if (!(element instanceof JsonObject o)) {
 					continue;
 				}
+				try {
 				SharedTasks.Entry entry = new SharedTasks.Entry();
 				entry.id = string(o, "id");
 				if (entry.id.isBlank()) {
@@ -92,15 +102,24 @@ public final class ShareStore {
 				}
 				SharedTasks.BY_ID.put(entry.id, entry);
 				count++;
+				} catch (Exception rowError) {
+					EasyTaskMgr.LOGGER.warn("跳过一条损坏的共享任务存档：{}", o, rowError);
+				}
 			}
 			EasyTaskMgr.LOGGER.info("已从存档恢复 {} 条共享任务（格式版本 {}）", count, version);
 		} catch (Exception e) {
-			EasyTaskMgr.LOGGER.error("读取共享任务存档失败（{}），本次按空表启动", path, e);
+			loadFailed = true;
+			EasyTaskMgr.LOGGER.error("读取共享任务存档失败（{}），本次按空表启动，且不覆盖原文件", path, e);
 		}
 	}
 
 	/** 立即把当前共享任务表写盘（先写临时文件再替换，避免写一半崩溃留下坏档）。 */
-	public static void save(MinecraftServer server) {
+	/** @return false 表示写盘失败，调用方应保留 dirty 以便重试 */
+	public static boolean save(MinecraftServer server) {
+		if (loadFailed) {
+			EasyTaskMgr.LOGGER.warn("共享任务存档上次读取失败，跳过本次写盘");
+			return false;
+		}
 		Path path = file(server);
 		JsonObject root = new JsonObject();
 		root.addProperty("version", VERSION);
@@ -142,8 +161,10 @@ public final class ShareStore {
 			Path temp = path.resolveSibling(FILE_NAME + ".tmp");
 			Files.writeString(temp, GSON.toJson(root), StandardCharsets.UTF_8);
 			Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING);
+			return true;
 		} catch (Exception e) {
 			EasyTaskMgr.LOGGER.error("写入共享任务存档失败（{}）", path, e);
+			return false;
 		}
 	}
 

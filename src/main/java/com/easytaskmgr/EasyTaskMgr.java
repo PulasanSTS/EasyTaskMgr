@@ -46,6 +46,20 @@ public class EasyTaskMgr implements ModInitializer {
 
 	private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
 
+	/** 每个玩家每秒最多处理多少个共享包。 */
+	private static final int MAX_PACKETS_PER_SECOND = 30;
+	private static final Map<UUID, long[]> RATE_LIMIT = new ConcurrentHashMap<>();
+
+	private static boolean allowed(ServerPlayer player) {
+		long now = System.currentTimeMillis();
+		long[] window = RATE_LIMIT.computeIfAbsent(player.getUUID(), k -> new long[]{now, 0});
+		if (now - window[0] >= 1000L) {
+			window[0] = now;
+			window[1] = 0;
+		}
+		return ++window[1] <= MAX_PACKETS_PER_SECOND;
+	}
+
 	public static Identifier id(String path) {
 		return Identifier.fromNamespaceAndPath(MOD_ID, path);
 	}
@@ -61,7 +75,11 @@ public class EasyTaskMgr implements ModInitializer {
 		ServerPlayNetworking.registerGlobalReceiver(ShareActionC2S.TYPE, (payload, context) -> {
 			var player = context.player();
 			var server = context.server();
+			if (!allowed(player)) {
+				return;
+			}
 			server.execute(() -> {
+				SharedTasks.takeChanged();
 				switch (payload.action()) {
 					case "publish" -> {
 						Task task = null;
@@ -82,8 +100,10 @@ public class EasyTaskMgr implements ModInitializer {
 					default -> {
 					}
 				}
-				SharedTasks.saveIfDirty(server);
-				SharedTasks.broadcast(server);
+				if (SharedTasks.takeChanged()) {
+					SharedTasks.saveIfDirty(server);
+					SharedTasks.broadcast(server);
+				}
 			});
 		});
 
@@ -101,8 +121,10 @@ public class EasyTaskMgr implements ModInitializer {
 			var server = context.server();
 			server.execute(() -> {
 				SharedTasks.progress(server, player, payload.id(), payload.count());
-				SharedTasks.saveIfDirty(server);
-				SharedTasks.broadcast(server);
+				if (SharedTasks.takeChanged()) {
+					SharedTasks.saveIfDirty(server);
+					SharedTasks.broadcast(server);
+				}
 			});
 		});
 
