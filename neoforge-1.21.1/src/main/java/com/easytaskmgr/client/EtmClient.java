@@ -46,6 +46,8 @@ public final class EtmClient {
 		if (mc.player == null) {
 			return;
 		}
+		// 语言可能被设置界面 / Minecraft 设置改动，这里对齐内置文案的语言（review #26）
+		com.easytaskmgr.i18n.I18n.set(ClientUtil.lang());
 		while (KEY_QUICK_ADD.consumeClick()) {
 			if (mc.screen == null) {
 				mc.setScreen(new QuickAddScreen());
@@ -108,7 +110,14 @@ public final class EtmClient {
 
 	@SubscribeEvent
 	public static void onLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
+		Minecraft mc = Minecraft.getInstance();
+		// 进服先读配置与本地任务，再处理上线提醒（review #3、#4）
+		com.easytaskmgr.config.ModConfig.get().load();
+		com.easytaskmgr.task.TaskStore.get().load();
+		com.easytaskmgr.i18n.I18n.set(ClientUtil.lang());
 		ClientShared.sync();
+		ClientTasks.onLogin(mc);
+		ClientTasks.queryAllAdvancements();
 	}
 
 	@SubscribeEvent

@@ -36,11 +36,16 @@ public final class EtmCommand {
 			return 0;
 		}
 		int count = SharedTasks.inviteAllSpecial(player, target);
+		if (player.getServer() != null) {
+			// 邀请后立刻落盘并广播，在线被邀请者马上能看到（review #9）
+			SharedTasks.saveIfDirty(player.getServer());
+			SharedTasks.broadcast(player.getServer());
+		}
 		if (count == 0) {
 			source.sendFailure(Component.translatable("easytaskmgr.command.noSpecialTasks"));
 			return 0;
 		}
-		source.sendSuccess(() -> Component.translatable("easytaskmgr.command.invited", target, count), false);
+		source.sendSuccess(() -> Component.translatable("easytaskmgr.command.invited", count, target), false);
 		return count;
 	}
 }

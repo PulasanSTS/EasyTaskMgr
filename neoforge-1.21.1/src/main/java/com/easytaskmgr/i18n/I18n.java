@@ -116,6 +116,13 @@ public final class I18n {
 		put("hud.title", "待办清单 %d", "Todos %d");
 		put("hud.hint", "点击任务即可完成 / 认领 · 按 %s 退出", "Click a task to complete or claim · %s to exit");
 		put("hud.more", "…还有 %d 条", "…and %d more");
+
+		put("hud.state.done", "已完成", "done");
+		put("hud.state.partial", "已完成", "done");
+		put("hud.state.claimed", "已认领", "claimed");
+		put("ui.close", "关闭", "Close");
+		put("ui.save", "保存", "Save");
+		put("ui.cancel", "取消", "Cancel");
 		put("hud.advancement", "成就 %s", "Advancement %s");
 		put("dir.front", "正前", "ahead");
 		put("dir.frontRight", "右前", "front-right");
@@ -130,9 +137,6 @@ public final class I18n {
 		// 通用按钮 / 开关
 		put("ui.on", "开", "On");
 		put("ui.off", "关", "Off");
-		put("ui.cancel", "取消", "Cancel");
-		put("ui.save", "保存", "Save");
-		put("ui.close", "关闭", "Close");
 		put("ui.settings", "设置", "Settings");
 		put("ui.new", "新增", "New");
 		put("ui.edit", "改", "Edit");
@@ -163,7 +167,9 @@ public final class I18n {
 		put("share.tagClaim", "[可认领]", "[claimable]");
 		put("share.tagLocked", "[未受邀]", "[locked]");
 		put("share.claimedToast", "已认领：%s", "Claimed: %s");
-		put("edit.visibility", "可见性：%s", "Visibility: %s");
+		put("edit.needTarget", "收集 / 成就任务必须填写目标", "Collect / advancement tasks need a target");
+		put("share.serverMissing", "服务端没有安装同版本模组，已保存为本地任务", "Server mod missing — saved as a local task");
+		put("share.publishFailed", "发布共享任务失败，已保留为本地任务", "Publishing failed — kept as a local task");		put("edit.visibility", "可见性：%s", "Visibility: %s");
 		put("vis.personal", "仅个人", "Personal");
 		put("vis.shared", "共享", "Shared");
 		put("vis.special", "特殊共享", "Special");
@@ -250,6 +256,7 @@ public final class I18n {
 		put("cfg.team", "队友", "Teammates");
 		put("cfg.sound", "音效", "Sound");
 		put("cfg.reset", "重置位置", "Reset position");
+		put("cfg.arrow", "方向箭头", "Direction arrow");
 		put("cfg.done", "完成", "Done");
 		put("cfg.language", "语言", "Language");
 		put("cfg.lang.auto", "自动", "Auto");

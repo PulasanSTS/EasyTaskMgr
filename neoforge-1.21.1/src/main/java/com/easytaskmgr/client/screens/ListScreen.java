@@ -26,7 +26,7 @@ public class ListScreen extends Screen {
 	private long statusUntil;
 
 	public ListScreen() {
-		super(Component.translatable("list.title"));
+		super(Component.literal(ClientUtil.t("list.title")));
 	}
 
 	private record Row(int y, String text, String id, boolean shared, boolean done) {
@@ -36,11 +36,11 @@ public class ListScreen extends Screen {
 	protected void init() {
 		int y = height - 26;
 		int x = width / 2 - 210;
-		addRenderableWidget(Button.builder(Component.translatable("ui.new"), b -> minecraft.setScreen(new EditScreen(null)))
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.new")), b -> minecraft.setScreen(new EditScreen(null)))
 				.bounds(x, y, 80, 20).build());
-		addRenderableWidget(Button.builder(Component.translatable("ui.settings"), b -> minecraft.setScreen(new ConfigScreen()))
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.settings")), b -> minecraft.setScreen(new ConfigScreen()))
 				.bounds(x + 82, y, 40, 20).build());
-		addRenderableWidget(Button.builder(Component.translatable("ui.clearDone"), b -> {
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.clearDone")), b -> {
 			TaskStore.get().clearCompleted();
 			TaskStore.get().save();
 		}).bounds(x + 124, y, 90, 20).build());
@@ -48,7 +48,7 @@ public class ListScreen extends Screen {
 				.bounds(x + 216, y, 70, 20).build());
 		addRenderableWidget(Button.builder(Component.literal("CSV ↓"), b -> importCsv())
 				.bounds(x + 288, y, 70, 20).build());
-		addRenderableWidget(Button.builder(Component.translatable("ui.close"), b -> onClose())
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.close")), b -> onClose())
 				.bounds(x + 360, y, 60, 20).build());
 	}
 
@@ -125,8 +125,13 @@ public class ListScreen extends Screen {
 			}
 			int color = row.done() ? 0xFF888888 : row.shared() ? 0xFF7FB8FF : 0xFFFFFFFF;
 			graphics.drawString(font, ClientUtil.clip(font, row.text(), width - 220), 20, row.y(), color, false);
-			graphics.drawString(font, "[改]", width - 120, row.y(), 0xFF9AD9FF, false);
-			graphics.drawString(font, "[删]", width - 82, row.y(), 0xFFFF9E9E, false);
+			ClientShared.Entry shared = row.shared() ? ClientShared.byId(row.id()) : null;
+			if (!row.shared()) {
+				graphics.drawString(font, "[改]", width - 120, row.y(), 0xFF9AD9FF, false);
+				graphics.drawString(font, "[删]", width - 82, row.y(), 0xFFFF9E9E, false);
+			} else if (shared != null && shared.mine) {
+				graphics.drawString(font, "[撤销]", width - 120, row.y(), 0xFFFF9E9E, false);
+			}
 		}
 
 		super.render(graphics, mouseX, mouseY, partialTick);
@@ -141,12 +146,21 @@ public class ListScreen extends Screen {
 			return true;
 		}
 		for (Row row : rows()) {
+			// 与渲染保持一致：滚动到可视区外的行不能点（review #21）
+			if (row.y() < 44 || row.y() > height - 34) {
+				continue;
+			}
 			if (mouseY < row.y() || mouseY > row.y() + ROW_HEIGHT - 2) {
 				continue;
 			}
 			if (row.shared()) {
 				ClientShared.Entry entry = ClientShared.byId(row.id());
-				if (entry != null) {
+				if (entry == null) {
+					return true;
+				}
+				if (entry.mine && mouseX >= width - 128) {
+					ClientShared.revoke(entry.id);
+				} else {
 					ClientShared.click(entry);
 				}
 				return true;

@@ -30,10 +30,13 @@ public class EditScreen extends Screen {
 	private EditBox minuteBox;
 	private EditBox dayBox;
 	private EditBox remindBox;
+	/** 当前候选（id, 显示名）；输入物品 / 成就名时出现。 */
+	private final java.util.List<String[]> suggestions = new java.util.ArrayList<>();
 
 	public EditScreen(Task existing) {
-		super(Component.translatable(existing == null ? "edit.new" : "edit.edit"));
-		this.task = existing == null ? new Task() : existing;
+		super(Component.literal(ClientUtil.t(existing == null ? "edit.new" : "edit.edit")));
+		// 编辑副本：取消时不会把改动留在仓库对象上（review #18）
+		this.task = existing == null ? new Task() : copyOf(existing);
 		this.creating = existing == null;
 	}
 
@@ -80,10 +83,10 @@ public class EditScreen extends Screen {
 			task.shareMode = (task.shareMode + 1) % 5;
 			b.setMessage(shareLabel());
 		}).bounds(cx - 110, y, 110, 20).build());
-		addRenderableWidget(Button.builder(Component.translatable("ui.save"), b -> save())
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.save")), b -> save())
 				.bounds(cx + 4, y, 110, 20).build());
 		y += 24;
-		addRenderableWidget(Button.builder(Component.translatable("ui.cancel"), b -> onClose())
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.cancel")), b -> onClose())
 				.bounds(cx - 110, y, 220, 20).build());
 	}
 
@@ -93,6 +96,36 @@ public class EditScreen extends Screen {
 		box.setMaxLength(200);
 		addRenderableWidget(box);
 		return box;
+	}
+
+	private static Task copyOf(Task source) {
+		Task copy = new Task();
+		copy.id = source.id;
+		copy.text = source.text;
+		copy.priority = source.priority;
+		copy.done = source.done;
+		copy.createdAt = source.createdAt;
+		copy.completedAt = source.completedAt;
+		copy.target = source.target;
+		copy.targetCount = source.targetCount;
+		copy.x = source.x;
+		copy.y = source.y;
+		copy.z = source.z;
+		copy.radius = source.radius;
+		copy.intervalMinutes = source.intervalMinutes;
+		copy.gameHour = source.gameHour;
+		copy.gameMinute = source.gameMinute;
+		copy.gameDayInterval = source.gameDayInterval;
+		copy.lastGameDay = source.lastGameDay;
+		copy.lastClockTime = source.lastClockTime;
+		copy.remindText = source.remindText;
+		copy.progress = source.progress;
+		copy.triggered = source.triggered;
+		copy.nextTriggerAt = source.nextTriggerAt;
+		copy.owner = source.owner;
+		copy.visibility = source.visibility;
+		copy.shareMode = source.shareMode;
+		return copy;
 	}
 
 	private static String fmt(double value) {
@@ -110,20 +143,20 @@ public class EditScreen extends Screen {
 	}
 
 	private Component typeLabel() {
-		return Component.translatable("ui.type", Component.translatable("type." + task.type.name().toLowerCase()));
+		return Component.literal(ClientUtil.t("ui.type", ClientUtil.t("type." + task.type.name().toLowerCase())));
 	}
 
 	private Component priorityLabel() {
-		return Component.translatable("ui.priority", Priority.byWeight(task.priority).label());
+		return Component.literal(ClientUtil.t("ui.priority", Priority.byWeight(task.priority).label()));
 	}
 
 	private Component timerLabel() {
-		return Component.translatable("ui.timer", Component.translatable("timer." + switch (task.timerMode) {
+		return Component.literal(ClientUtil.t("ui.timer", ClientUtil.t("timer." + switch (task.timerMode) {
 			case ON_JOIN -> "join";
 			case EVERY_JOIN -> "everyJoin";
 			case INTERVAL -> "interval";
 			case GAME_TIME -> "gameTime";
-		}));
+		})));
 	}
 
 	private Component visibilityLabel() {
@@ -132,11 +165,11 @@ public class EditScreen extends Screen {
 			case 2 -> "vis.special";
 			default -> "vis.personal";
 		};
-		return Component.translatable("edit.visibility", Component.translatable(key));
+		return Component.literal(ClientUtil.t("edit.visibility", ClientUtil.t(key)));
 	}
 
 	private Component shareLabel() {
-		return Component.translatable("edit.mode", Component.literal(modeText()));
+		return Component.literal(ClientUtil.t("edit.mode", modeText()));
 	}
 
 	private String modeText() {
@@ -183,20 +216,71 @@ public class EditScreen extends Screen {
 		task.gameMinute = Math.min(59, Math.max(0, parseInt(minuteBox, 0)));
 		task.gameDayInterval = Math.max(1, parseInt(dayBox, 1));
 		task.remindText = remindBox.getValue().trim();
+		// 收集 / 成就任务必须有目标，否则永远完不成（review #23）
+		if ((task.type == TaskType.COLLECT || task.type == TaskType.ADVANCEMENT) && task.target.isBlank()) {
+			ClientUtil.warn(ClientUtil.t("edit.needTarget"));
+			return;
+		}
 		task.normalize();
 		if (creating) {
 			ClientTasks.add(task);
 		} else {
 			TaskStore.get().save();
 		}
-		// 共享任务：直接发布到服务端（本地表只保留个人任务）
-		if (task.visibility > 0 && ClientShared.available()
-				&& task.type != TaskType.ADVANCEMENT && task.type != TaskType.TIMER) {
-			ClientShared.publish(task);
-			TaskStore.get().remove(task);
-			TaskStore.get().save();
+		// 共享任务：先发布，成功才从本地表移除；失败 / 服务端没模组时降级并提示（review #8、#28）
+		boolean shareable = task.type != TaskType.ADVANCEMENT && task.type != TaskType.TIMER;
+		if (task.visibility > 0 && shareable) {
+			if (!ClientShared.available()) {
+				ClientUtil.warn(ClientUtil.t("share.serverMissing"));
+			} else if (!ClientShared.publish(task)) {
+				ClientUtil.warn(ClientUtil.t("share.publishFailed"));
+			} else {
+				TaskStore.get().remove(task);
+				TaskStore.get().save();
+			}
+		}
+		if (task.type == TaskType.ADVANCEMENT) {
+			ClientTasks.queryAdvancement(task.target);
 		}
 		onClose();
+	}
+
+	/** 根据输入框内容刷新候选列表（物品 / 成就，最多 8 条）。 */
+	private void refreshSuggestions() {
+		suggestions.clear();
+		String query = targetBox == null ? "" : targetBox.getValue().trim().toLowerCase();
+		if (query.isEmpty()) {
+			return;
+		}
+		if (task.type == TaskType.COLLECT) {
+			for (var entry : net.minecraft.core.registries.BuiltInRegistries.ITEM.entrySet()) {
+				String id = entry.getKey().location().toString();
+				String name = entry.getValue().getDescription().getString();
+				if (name.toLowerCase().contains(query) || id.contains(query)) {
+					suggestions.add(new String[]{id, name});
+					if (suggestions.size() >= 8) {
+						break;
+					}
+				}
+			}
+		} else if (task.type == TaskType.ADVANCEMENT) {
+			var mc = net.minecraft.client.Minecraft.getInstance();
+			if (mc.getConnection() != null) {
+				for (var node : mc.getConnection().getAdvancements().getTree().nodes()) {
+					var display = node.holder().value().display();
+					if (display.isEmpty()) {
+						continue;
+					}
+					String title = display.get().getTitle().getString();
+					if (title.toLowerCase().contains(query)) {
+						suggestions.add(new String[]{node.holder().id().toString(), title});
+						if (suggestions.size() >= 8) {
+							break;
+						}
+					}
+				}
+			}
+		}
 	}
 
 	@Override
@@ -204,9 +288,24 @@ public class EditScreen extends Screen {
 		renderBackground(graphics, mouseX, mouseY, partialTick);
 		graphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFFFFF);
 		int cx = width / 2;
-		graphics.drawString(font, Component.translatable("edit.content"), cx - 110, 30, 0xFFAAAAAA, false);
-		graphics.drawString(font, Component.translatable("edit.remind"), cx - 110, 86, 0xFFAAAAAA, false);
+		graphics.drawString(font, Component.literal(ClientUtil.t("edit.content")), cx - 110, 30, 0xFFAAAAAA, false);
+		graphics.drawString(font, Component.literal(ClientUtil.t("edit.remind")), cx - 110, 86, 0xFFAAAAAA, false);
 		super.render(graphics, mouseX, mouseY, partialTick);
+	}
+
+	@Override
+	public boolean mouseClicked(double mouseX, double mouseY, int button) {
+		int cx = width / 2;
+		int sugY = 40 + 20;
+		java.util.List<String[]> snapshot = new java.util.ArrayList<>(suggestions);
+		for (String[] suggestion : snapshot) {
+			if (mouseX >= cx + 120 && mouseX <= cx + 260 && mouseY >= sugY && mouseY < sugY + 10) {
+				targetBox.setValue(suggestion[0]);
+				return true;
+			}
+			sugY += 10;
+		}
+		return super.mouseClicked(mouseX, mouseY, button);
 	}
 
 	@Override

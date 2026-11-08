@@ -94,10 +94,10 @@ public final class ClientTasks {
 					}
 				}
 				case COORDINATE -> {
+					// 只算水平距离：挖到脚下也能算到达（review #16）
 					double dx = mc.player.getX() - task.x;
-					double dy = mc.player.getY() - task.y;
 					double dz = mc.player.getZ() - task.z;
-					if (dx * dx + dy * dy + dz * dz <= (double) task.radius * task.radius) {
+					if (dx * dx + dz * dz <= (double) task.radius * task.radius) {
 						complete(task);
 					}
 				}
@@ -119,11 +119,18 @@ public final class ClientTasks {
 				}
 			}
 			case GAME_TIME -> {
-				long dayTime = mc.level.getDayTime() % 24000L;
-				long ticks = task.gameHour * 1000L + task.gameMinute * 1000L / 60L;
-				long day = mc.level.getDayTime() / 24000L;
+				// Minecraft 的一天从 06:00 开始，且整合包可能改过昼夜长度（review #14）
+				long dayLength = Math.max(2000, com.easytaskmgr.config.ModConfig.get().ticksPerDay);
+				long dayTime = mc.level.getDayTime() % dayLength;
+				long day = mc.level.getDayTime() / dayLength;
+				long target = Math.floorMod((task.gameHour - 6) * 1000L + task.gameMinute * 1000L / 60L, dayLength);
 				long interval = Math.max(1, task.gameDayInterval);
-				if (Math.abs(dayTime - ticks) <= 20 && day % interval == 0 && !task.triggered) {
+				// 新的一天重置触发标记，否则只会响一次（review #15）
+				if (task.lastGameDay != day) {
+					task.triggered = false;
+					task.lastGameDay = day;
+				}
+				if (!task.triggered && day % interval == 0 && Math.abs(dayTime - target) <= 20) {
 					task.triggered = true;
 					TaskStore.get().save();
 					ClientUtil.remind(ClientUtil.t("notify.reminder", title(task)));
@@ -143,6 +150,52 @@ public final class ClientTasks {
 			if (task.type == TaskType.ADVANCEMENT && advancementId.equals(task.target)) {
 				complete(task);
 			}
+		}
+	}
+	/** 进入世界时处理「上线后提醒 / 每次上线提醒」，并重置游戏内时间的触发标记。 */
+	public static void onLogin(Minecraft mc) {
+		for (Task task : active()) {
+			if (task.type != TaskType.TIMER) {
+				continue;
+			}
+			switch (task.timerMode) {
+				case ON_JOIN -> {
+					if (!task.triggered) {
+						task.triggered = true;
+						TaskStore.get().save();
+						complete(task);
+					}
+				}
+				case EVERY_JOIN -> ClientUtil.remind(ClientUtil.t("notify.reminder", title(task)));
+				case GAME_TIME -> {
+					task.triggered = false;
+					task.lastGameDay = -1L;
+					TaskStore.get().save();
+				}
+				default -> {
+				}
+			}
+		}
+	}
+
+	/** 登录后把所有成就类待办都问一遍服务端，补上「创建前就已经达成」的情况（review #22）。 */
+	public static void queryAllAdvancements() {
+		for (Task task : active()) {
+			if (task.type == TaskType.ADVANCEMENT) {
+				queryAdvancement(task.target);
+			}
+		}
+	}
+	/** 成就类待办保存后，向服务端查询这个成就是否已经达成（review #22）。 */
+	public static void queryAdvancement(String advancementId) {
+		if (advancementId == null || advancementId.isBlank()) {
+			return;
+		}
+		try {
+			net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+					new com.easytaskmgr.net.AdvancementQueryC2S(advancementId, ClientUtil.lang().code()));
+		} catch (Exception ignored) {
+			// 服务端没装模组时忽略
 		}
 	}
 	/** HUD / 列表里显示的一行进度说明（没有就返回空串）。 */

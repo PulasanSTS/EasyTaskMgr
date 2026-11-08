@@ -124,8 +124,9 @@ public final class ClientShared {
 		send(new ShareActionC2S("sync", "", "", ""));
 	}
 
-	public static void publish(Task task) {
-		send(new ShareActionC2S("publish", task.id, GSON.toJson(task), ""));
+	/** @return 发送是否成功；失败时调用方应保留本地任务（review #8） */
+	public static boolean publish(Task task) {
+		return send(new ShareActionC2S("publish", task.id, GSON.toJson(task), ""));
 	}
 
 	public static void claim(String id) {
@@ -144,11 +145,13 @@ public final class ClientShared {
 		send(new ShareActionC2S("invite", id, "", target));
 	}
 
-	private static void send(ShareActionC2S payload) {
+	private static boolean send(ShareActionC2S payload) {
 		try {
 			PacketDistributor.sendToServer(payload);
+			return true;
 		} catch (Exception e) {
 			com.easytaskmgr.EasyTaskMgrNeo.LOGGER.warn("发送共享任务请求失败", e);
+			return false;
 		}
 	}
 
@@ -189,7 +192,8 @@ public final class ClientShared {
 		}
 		if (!entry.claimed && entry.canClaim) {
 			claim(entry.id);
-		} else if (entry.claimed && !entry.doneByMe) {
+		} else if (!entry.doneByMe && (entry.claimed || entry.mine)) {
+			// 发布者在「含发布者」的完成条件里不需要认领，也要能直接上报完成（review #17）
 			complete(entry.id);
 		}
 	}

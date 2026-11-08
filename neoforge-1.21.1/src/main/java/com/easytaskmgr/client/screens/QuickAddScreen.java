@@ -34,9 +34,9 @@ public class QuickAddScreen extends Screen {
 							button.setMessage(Component.literal("[" + priority.label() + "]"));
 						})
 				.bounds(width / 2 - 100, height / 2, 90, 20).build());
-		addRenderableWidget(Button.builder(Component.translatable("ui.save"), button -> save())
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.save")), button -> save())
 				.bounds(width / 2 + 10, height / 2, 90, 20).build());
-		addRenderableWidget(Button.builder(Component.translatable("ui.cancel"), button -> onClose())
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.cancel")), button -> onClose())
 				.bounds(width / 2 - 100, height / 2 + 24, 200, 20).build());
 	}
 

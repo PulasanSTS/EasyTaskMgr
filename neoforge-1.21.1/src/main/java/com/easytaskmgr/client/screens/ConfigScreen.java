@@ -11,6 +11,12 @@ import net.minecraft.network.chat.Component;
 
 /** 设置：HUD 显示项、位置、语言、音效。 */
 public class ConfigScreen extends Screen {
+	/** 正在拖动 HUD 预览（review: HUD 拖拽定位）。 */
+	private boolean dragging;
+	private double dragOffsetX;
+	private double dragOffsetY;
+	private static final int PREVIEW_W = 140;
+	private static final int PREVIEW_H = 54;
 	public ConfigScreen() {
 		super(Component.literal("EasyTaskMgr"));
 	}
@@ -67,7 +73,7 @@ public class ConfigScreen extends Screen {
 			cfg.save();
 			button.setMessage(label("cfg.posY", cfg.hudYPercent));
 		}).bounds(left, y, w, h).build());
-		addRenderableWidget(Button.builder(Component.translatable("ui.close"), button -> onClose())
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.close")), button -> onClose())
 				.bounds(right, y, w, h).build());
 	}
 
@@ -92,14 +98,65 @@ public class ConfigScreen extends Screen {
 		return Component.literal(ClientUtil.t("cfg.language") + ": " + cfg.language);
 	}
 
+	private int previewX() {
+		return (int) (width * ModConfig.get().hudXPercent / 100.0) - PREVIEW_W;
+	}
+
+	private int previewY() {
+		return (int) (height * ModConfig.get().hudYPercent / 100.0);
+	}
+
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
 		renderBackground(graphics, mouseX, mouseY, partialTick);
 		graphics.drawCenteredString(font, title, width / 2, height / 2 - 105, 0xFFFFFFFF);
 		super.render(graphics, mouseX, mouseY, partialTick);
+		// 预览框：按住拖动即可改 HUD 位置（对应 Fabric 版拖拽）
+		int px = previewX();
+		int py = previewY();
+		graphics.fill(px, py, px + PREVIEW_W, py + PREVIEW_H, 0x66FFFFFF);
+		graphics.drawString(font, ClientUtil.t("cfg.hint"), px, py + PREVIEW_H + 4, 0xFFAAAAAA, false);
+		graphics.drawString(font, ClientUtil.t("hud.title", ClientTasks.active().size()), px + 4, py + 4,
+				0xFFFFFFFF, false);
 		int active = ClientTasks.active().size();
 		graphics.drawCenteredString(font, Component.literal(ClientUtil.t("hud.title", active)),
 				width / 2, height / 2 + 105, 0xFFAAAAAA);
+	}
+
+	@Override
+	public boolean mouseClicked(double mouseX, double mouseY, int button) {
+		int px = previewX();
+		int py = previewY();
+		if (button == 0 && mouseX >= px && mouseX <= px + PREVIEW_W && mouseY >= py && mouseY <= py + PREVIEW_H) {
+			dragging = true;
+			dragOffsetX = mouseX - px;
+			dragOffsetY = mouseY - py;
+			return true;
+		}
+		return super.mouseClicked(mouseX, mouseY, button);
+	}
+
+	@Override
+	public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+		if (!dragging) {
+			return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+		}
+		ModConfig cfg = ModConfig.get();
+		double x = Math.max(0, Math.min(100, (mouseX - dragOffsetX + PREVIEW_W) / Math.max(1, width) * 100.0));
+		double y = Math.max(0, Math.min(100, (mouseY - dragOffsetY) / Math.max(1, height) * 100.0));
+		cfg.hudXPercent = (int) Math.round(x);
+		cfg.hudYPercent = (int) Math.round(y);
+		return true;
+	}
+
+	@Override
+	public boolean mouseReleased(double mouseX, double mouseY, int button) {
+		if (dragging) {
+			dragging = false;
+			ModConfig.get().save();
+			return true;
+		}
+		return super.mouseReleased(mouseX, mouseY, button);
 	}
 
 	@Override

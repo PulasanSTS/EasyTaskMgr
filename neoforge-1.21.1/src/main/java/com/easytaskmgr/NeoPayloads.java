@@ -24,7 +24,9 @@ public final class NeoPayloads {
 		registrar.playToServer(ShareActionC2S.TYPE, ShareActionC2S.CODEC,
 				(payload, context) -> context.enqueueWork(
 						() -> EasyTaskMgrNeo.handleShareAction((net.minecraft.server.level.ServerPlayer) context.player(), payload)));
-		registrar.playToServer(ShareProgressC2S.TYPE, ShareProgressC2S.CODEC,
+		registrar.playToServer(com.easytaskmgr.net.AdvancementQueryC2S.TYPE, com.easytaskmgr.net.AdvancementQueryC2S.CODEC,
+				(payload, context) -> context.enqueueWork(
+						() -> EasyTaskMgrNeo.handleAdvancementQuery((net.minecraft.server.level.ServerPlayer) context.player(), payload)));		registrar.playToServer(ShareProgressC2S.TYPE, ShareProgressC2S.CODEC,
 				(payload, context) -> context.enqueueWork(
 						() -> EasyTaskMgrNeo.handleProgress((net.minecraft.server.level.ServerPlayer) context.player(), payload)));
 	}

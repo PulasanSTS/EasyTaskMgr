@@ -29,9 +29,15 @@ neoForge {
     runs {
         client {
             client()
+            gameDirectory = file("run-client")
+            // 冒烟测试：直接进本地服务器（可用 -PnoQuickPlay 关掉）
+            if (!project.hasProperty("noQuickPlay")) {
+                programArguments.addAll("--quickPlayMultiplayer", "127.0.0.1:25565", "--username", "Smoketest")
+            }
         }
         server {
             server()
+            gameDirectory = file("run-server")
         }
     }
 
