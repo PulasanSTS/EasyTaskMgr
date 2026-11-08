@@ -83,6 +83,7 @@ public final class EtmClient {
 			}
 		}
 
+
 		if (++tickCounter >= 20) {
 			tickCounter = 0;
 			ClientTasks.tick(mc);

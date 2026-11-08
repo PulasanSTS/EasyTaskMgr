@@ -49,3 +49,66 @@ gradlew.bat runClient
 用于绕过某些网络下 `maven.neoforged.net` 不可达的问题。网络正常时它不会影响构建。
 
 详细移植记录见 [PORTING-NOTES.md](PORTING-NOTES.md)。
+
+## 客户端启动（本机工作区特殊网络环境）
+
+本项目为了绕开不可达的 `maven.neoforged.net`，用了本地 `local-maven` 的
+`minecraft-dependencies` POM。它的副作用是 **MDG 生成的启动参数里没有 LWJGL natives**，
+直接 `runClient` 会报：
+
+```
+java.lang.UnsatisfiedLinkError: Failed to locate library: lwjgl.dll
+```
+
+解决办法（一次性；把 natives 解压到固定目录，然后让 JVM 在启动时找到它们）：
+
+### Windows（PowerShell）
+
+```powershell
+$mods = 'lwjgl','lwjgl-glfw','lwjgl-opengl','lwjgl-stb','lwjgl-tinyfd','lwjgl-openal','lwjgl-jemalloc','lwjgl-freetype'
+$dir  = Join-Path $PWD 'build\lwjgl-natives'
+New-Item -ItemType Directory -Force -Path $dir | Out-Null
+
+# JAVA_HOME 没设置时退回 PATH 上的 jar
+$jar = if ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME 'bin\jar.exe' } else { 'jar.exe' }
+
+foreach ($m in $mods) {
+    $tmp = Join-Path $env:TEMP "$m-natives-windows.jar"
+    curl.exe -L --fail -o $tmp "https://repo1.maven.org/maven2/org/lwjgl/$m/3.3.3/$m-3.3.3-natives-windows.jar"
+    Push-Location $dir            # 关键：解压到 natives 目录，而不是当前目录
+    try { & $jar xf $tmp } finally { Pop-Location }
+}
+
+# 官方 jar 里的 dll 在 windows/x64/org/lwjgl/... 子目录下，摊平到 $dir 根目录
+Get-ChildItem $dir -Recurse -Filter *.dll | ForEach-Object {
+    $target = Join-Path $dir $_.Name
+    if ($_.FullName -ne $target) { Move-Item $_.FullName $target -Force }
+}
+
+# 路径加引号，避免项目路径里有空格时被拆开
+$env:JAVA_TOOL_OPTIONS = "-Djava.library.path=`"$dir`" -Dorg.lwjgl.librarypath=`"$dir`""
+.\gradlew.bat runClient
+```
+
+### Linux / macOS（bash）
+
+```bash
+mods="lwjgl lwjgl-glfw lwjgl-opengl lwjgl-stb lwjgl-tinyfd lwjgl-openal lwjgl-jemalloc lwjgl-freetype"
+classifier="natives-linux"      # macOS: natives-macos；Apple Silicon: natives-macos-arm64
+dir="$PWD/build/lwjgl-natives"
+mkdir -p "$dir"
+
+for m in $mods; do
+    tmp="$(mktemp -d)/$m-$classifier.jar"
+    curl -fL -o "$tmp" "https://repo1.maven.org/maven2/org/lwjgl/$m/3.3.3/$m-3.3.3-$classifier.jar"
+    unzip -jo "$tmp" '*.so' '*.dylib' '*.dll' -d "$dir"   # -j 摊平到根目录
+done
+
+export JAVA_TOOL_OPTIONS="-Djava.library.path=\"$dir\" -Dorg.lwjgl.librarypath=\"$dir\""
+./gradlew runClient
+```
+
+> 如果 `JAVA_TOOL_OPTIONS` 里的引号在你的 shell 里仍然被吞掉（路径带空格），
+> 可以先用 `subst X: "$dir"`（Windows）或 `ln -s` 到无空格路径，再把 `-Djava.library.path` 指向它。
+
+网络正常、使用官方 Maven 的机器不需要这一步。
