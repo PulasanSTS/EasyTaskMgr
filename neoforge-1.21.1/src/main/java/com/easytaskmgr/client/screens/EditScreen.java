@@ -47,6 +47,8 @@ public class EditScreen extends Screen {
 	private final List<String[]> suggestions = new ArrayList<>();
 	/** 选中成就后显示的详情行。 */
 	private String detailLine = "";
+	/** 详情对应的成就 id，目标被改写后清空详情。 */
+	private String detailFor = "";
 
 	public EditScreen(Task existing) {
 		super(Component.literal(ClientUtil.t(existing == null ? "edit.new" : "edit.edit")));
@@ -150,6 +152,8 @@ public class EditScreen extends Screen {
 		Task copy = new Task();
 		copy.id = source.id;
 		copy.text = source.text;
+		copy.type = source.type;
+		copy.timerMode = source.timerMode;
 		copy.priority = source.priority;
 		copy.done = source.done;
 		copy.createdAt = source.createdAt;
@@ -241,6 +245,10 @@ public class EditScreen extends Screen {
 			return;
 		}
 		String query = targetBox.getValue().trim().toLowerCase();
+		if (!detailFor.isBlank() && !detailFor.equals(targetBox.getValue().trim())) {
+			detailLine = "";
+			detailFor = "";
+		}
 		if (query.isEmpty()) {
 			return;
 		}
@@ -310,21 +318,15 @@ public class EditScreen extends Screen {
 		if (task.type == TaskType.COLLECT) {
 			task.targetCount = Math.max(1, parseInt(countBox, 1));
 		}
-		if (task.type == TaskType.COORDINATE) {
-			task.x = parseDouble(xBox, 0);
-			task.y = parseDouble(yBox, 0);
-			task.z = parseDouble(zBox, 0);
-			task.radius = Math.max(1, parseInt(radiusBox, 8));
-		}
-		if (task.type == TaskType.TIMER) {
-			if (task.timerMode == TimerMode.INTERVAL) {
-				task.intervalMinutes = Math.max(1, parseInt(minutesBox, 30));
-			} else if (task.timerMode == TimerMode.GAME_TIME) {
-				task.gameHour = Math.min(23, Math.max(0, parseInt(hourBox, 6)));
-				task.gameMinute = Math.min(59, Math.max(0, parseInt(minuteBox, 0)));
-				task.gameDayInterval = Math.max(1, parseInt(dayBox, 1));
-			}
-		}
+		// 无论当前类型如何都读一遍：隐藏的输入框保留原值，切换类型不会丢数据（review #2）
+		task.x = parseDouble(xBox, task.x);
+		task.y = parseDouble(yBox, task.y);
+		task.z = parseDouble(zBox, task.z);
+		task.radius = Math.max(1, parseInt(radiusBox, task.radius));
+		task.intervalMinutes = Math.max(1, parseInt(minutesBox, task.intervalMinutes));
+		task.gameHour = Math.min(23, Math.max(0, parseInt(hourBox, task.gameHour)));
+		task.gameMinute = Math.min(59, Math.max(0, parseInt(minuteBox, task.gameMinute)));
+		task.gameDayInterval = Math.max(1, parseInt(dayBox, task.gameDayInterval));
 		task.remindText = remindBox.getValue().trim();
 		task.normalize();
 		if (creating) {
@@ -358,7 +360,7 @@ public class EditScreen extends Screen {
 		graphics.drawString(font, ClientUtil.t("edit.remind"), cx - 150, 86, 0xFFAAAAAA, false);
 
 		refreshSuggestions();
-		int sugY = 62;
+		int sugY = 88;
 		for (String[] suggestion : suggestions) {
 			boolean hover = mouseX >= cx + 120 && mouseX <= cx + 280 && mouseY >= sugY && mouseY < sugY + 10;
 			graphics.drawString(font, ClientUtil.clip(font, suggestion[1], 150), cx + 120, sugY,
@@ -374,8 +376,11 @@ public class EditScreen extends Screen {
 
 	@Override
 	public boolean mouseClicked(double mouseX, double mouseY, int button) {
+		if (super.mouseClicked(mouseX, mouseY, button)) {
+			return true;
+		}
 		int cx = width / 2;
-		int sugY = 62;
+		int sugY = 88;
 		List<String[]> snapshot = new ArrayList<>(suggestions);
 		for (String[] suggestion : snapshot) {
 			if (mouseX >= cx + 120 && mouseX <= cx + 280 && mouseY >= sugY && mouseY < sugY + 10) {
@@ -383,6 +388,7 @@ public class EditScreen extends Screen {
 				detailLine = suggestion[2].isBlank()
 						? ""
 						: suggestion[2] + (suggestion[3].isBlank() ? "" : " · ↑ " + suggestion[3]);
+				detailFor = suggestion[0];
 				return true;
 			}
 			sugY += 10;

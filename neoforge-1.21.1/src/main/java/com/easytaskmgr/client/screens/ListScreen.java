@@ -113,6 +113,9 @@ public class ListScreen extends Screen {
 			y += ROW_HEIGHT;
 		}
 		for (ClientShared.Entry entry : ClientShared.all()) {
+			if (!showDone && entry.done) {
+				continue;
+			}
 			rows.add(new Row(y, "[S] " + entry.owner + " · " + ClientTasks.title(entry.task), entry.id, true, entry.done));
 			y += ROW_HEIGHT;
 		}
@@ -147,6 +150,9 @@ public class ListScreen extends Screen {
 			}
 		}
 
+		if (rows().isEmpty()) {
+			graphics.drawCenteredString(font, Component.literal(ClientUtil.t("list.empty")), width / 2, height / 2, 0xFFAAAAAA);
+		}
 		super.render(graphics, mouseX, mouseY, partialTick);
 		if (!status.isBlank() && System.currentTimeMillis() < statusUntil) {
 			graphics.drawString(font, status, 6, height - 12, 0xFFCCCCCC, false);
