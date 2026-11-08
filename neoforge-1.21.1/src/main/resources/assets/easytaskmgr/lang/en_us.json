@@ -1,0 +1,23 @@
+{
+	"key.categories.easytaskmgr.keys": "EasyTaskMgr",
+	"key.easytaskmgr.quick_add": "Quick add task",
+	"key.easytaskmgr.open_list": "Open task list",
+	"key.easytaskmgr.open_config": "Task settings",
+	"key.easytaskmgr.hud_interact": "HUD interaction (click to complete)",
+	"key.easytaskmgr.toggle_hud": "Toggle task HUD",
+
+	"easytaskmgr.share.publish": "%s shared a task: %s",
+	"easytaskmgr.share.claim": "%s claimed %s's task: %s",
+	"easytaskmgr.share.complete": "%s completed %s's task: %s",
+	"easytaskmgr.share.partial": "%s finished their part of %s's task: %s (%d/%d)",
+	"easytaskmgr.share.publishMany": "%s shared %s … (%d tasks in total)",
+
+	"easytaskmgr.type.normal": "task",
+	"easytaskmgr.type.collect": "collect task",
+	"easytaskmgr.type.advancement": "advancement task",
+	"easytaskmgr.type.coordinate": "coordinate task",
+	"easytaskmgr.type.timer": "timed reminder",
+  "easytaskmgr.command.invited": "Invited %2$s to %1$d special shared task(s)",
+  "easytaskmgr.command.noSpecialTasks": "You have no special shared tasks yet",
+  "easytaskmgr.command.playerOnly": "Only a player can run this command"
+}

@@ -1,0 +1,56 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+version = '1.0.1'
+group = 'com.easytaskmgr'
+base {
+    archivesName = 'easytaskmgr-neoforge'
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+}
+
+repositories {
+    mavenCentral()
+    // 本机访问 maven.neoforged.net 会被 DNS 污染，先尝试 USTC 的 bmclapi 镜像
+    maven {
+        name = 'BmclapiMirror'
+        url = 'https://cmcc.mirrors.ustc.edu.cn/bmclapi/'
+        allowInsecureProtocol = false
+    }
+}
+
+neoForge {
+    version = '21.1.233'
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+        }
+    }
+
+    mods {
+        easytaskmgr {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    def modVersion = project.version
+    inputs.property 'version', modVersion
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand 'version': modVersion
+    }
+}

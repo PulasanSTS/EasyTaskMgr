@@ -1,0 +1,23 @@
+{
+	"key.categories.easytaskmgr.keys": "EasyTaskMgr",
+	"key.easytaskmgr.quick_add": "快速添加待办",
+	"key.easytaskmgr.open_list": "打开待办列表",
+	"key.easytaskmgr.open_config": "待办设置",
+	"key.easytaskmgr.hud_interact": "HUD 交互（点击完成任务）",
+	"key.easytaskmgr.toggle_hud": "显示/隐藏待办 HUD",
+
+	"easytaskmgr.share.publish": "%s 发布了共享任务「%s」",
+	"easytaskmgr.share.claim": "%s 认领了 %s 发布的「%s」",
+	"easytaskmgr.share.complete": "%s 完成了 %s 发布的「%s」",
+	"easytaskmgr.share.partial": "%s 完成了 %s 发布的「%s」的自己的部分（%d/%d）",
+	"easytaskmgr.share.publishMany": "%s 创建了 %s 等 %d 条共享任务",
+
+	"easytaskmgr.type.normal": "普通任务",
+	"easytaskmgr.type.collect": "收集任务",
+	"easytaskmgr.type.advancement": "成就任务",
+	"easytaskmgr.type.coordinate": "坐标任务",
+	"easytaskmgr.type.timer": "定时提醒",
+  "easytaskmgr.command.invited": "已把 %d 条特殊共享任务邀请给 %s",
+  "easytaskmgr.command.noSpecialTasks": "你没有特殊共享任务，先把任务的可见性设为「特殊共享」",
+  "easytaskmgr.command.playerOnly": "只有玩家能执行这个命令"
+}
