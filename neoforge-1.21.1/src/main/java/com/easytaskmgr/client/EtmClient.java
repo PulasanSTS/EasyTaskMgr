@@ -2,6 +2,7 @@ package com.easytaskmgr.client;
 
 import com.easytaskmgr.EasyTaskMgrNeo;
 import com.easytaskmgr.client.screens.ConfigScreen;
+import com.easytaskmgr.client.screens.EditScreen;
 import com.easytaskmgr.client.screens.ListScreen;
 import com.easytaskmgr.client.screens.QuickAddScreen;
 import com.mojang.blaze3d.platform.InputConstants;
