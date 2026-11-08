@@ -60,31 +60,55 @@ gradlew.bat runClient
 java.lang.UnsatisfiedLinkError: Failed to locate library: lwjgl.dll
 ```
 
-解决办法（一次性，之后每次启动都带上这个环境变量即可）：
+解决办法（一次性；把 natives 解压到固定目录，然后让 JVM 在启动时找到它们）：
+
+### Windows（PowerShell）
 
 ```powershell
-# 1) 下载 LWJGL 3.3.3 的 natives（Maven Central 或 https://www.lwjgl.org/browse 同一批文件）
 $mods = 'lwjgl','lwjgl-glfw','lwjgl-opengl','lwjgl-stb','lwjgl-tinyfd','lwjgl-openal','lwjgl-jemalloc','lwjgl-freetype'
-$dir = "$PWD\build\lwjgl-natives"; New-Item -ItemType Directory -Force $dir | Out-Null
+$dir  = Join-Path $PWD 'build\lwjgl-natives'
+New-Item -ItemType Directory -Force -Path $dir | Out-Null
+
+# JAVA_HOME 没设置时退回 PATH 上的 jar
+$jar = if ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME 'bin\jar.exe' } else { 'jar.exe' }
+
 foreach ($m in $mods) {
-    curl.exe -L -o "$env:TEMP\$m.jar" "https://repo1.maven.org/maven2/org/lwjgl/$m/3.3.3/$m-3.3.3-natives-windows.jar"
-    & "$env:JAVA_HOME\bin\jar.exe" xf "$env:TEMP\$m.jar"   # 在 $dir 里执行
+    $tmp = Join-Path $env:TEMP "$m-natives-windows.jar"
+    curl.exe -L --fail -o $tmp "https://repo1.maven.org/maven2/org/lwjgl/$m/3.3.3/$m-3.3.3-natives-windows.jar"
+    Push-Location $dir            # 关键：解压到 natives 目录，而不是当前目录
+    try { & $jar xf $tmp } finally { Pop-Location }
 }
 
-# 2) 启动时把 natives 目录告诉 JVM（Gradle 派生的子 JVM 会继承这个变量）
-$env:JAVA_TOOL_OPTIONS = "-Djava.library.path=$dir -Dorg.lwjgl.librarypath=$dir"
+# 官方 jar 里的 dll 在 windows/x64/org/lwjgl/... 子目录下，摊平到 $dir 根目录
+Get-ChildItem $dir -Recurse -Filter *.dll | ForEach-Object {
+    $target = Join-Path $dir $_.Name
+    if ($_.FullName -ne $target) { Move-Item $_.FullName $target -Force }
+}
+
+# 路径加引号，避免项目路径里有空格时被拆开
+$env:JAVA_TOOL_OPTIONS = "-Djava.library.path=`"$dir`" -Dorg.lwjgl.librarypath=`"$dir`""
 .\gradlew.bat runClient
 ```
 
-Linux / macOS 把 classifier 换成 `natives-linux` / `natives-macos`（Apple Silicon 用 `natives-macos-arm64`）。
+### Linux / macOS（bash）
+
+```bash
+mods="lwjgl lwjgl-glfw lwjgl-opengl lwjgl-stb lwjgl-tinyfd lwjgl-openal lwjgl-jemalloc lwjgl-freetype"
+classifier="natives-linux"      # macOS: natives-macos；Apple Silicon: natives-macos-arm64
+dir="$PWD/build/lwjgl-natives"
+mkdir -p "$dir"
+
+for m in $mods; do
+    tmp="$(mktemp -d)/$m-$classifier.jar"
+    curl -fL -o "$tmp" "https://repo1.maven.org/maven2/org/lwjgl/$m/3.3.3/$m-3.3.3-$classifier.jar"
+    unzip -jo "$tmp" '*.so' '*.dylib' '*.dll' -d "$dir"   # -j 摊平到根目录
+done
+
+export JAVA_TOOL_OPTIONS="-Djava.library.path=\"$dir\" -Dorg.lwjgl.librarypath=\"$dir\""
+./gradlew runClient
+```
+
+> 如果 `JAVA_TOOL_OPTIONS` 里的引号在你的 shell 里仍然被吞掉（路径带空格），
+> 可以先用 `subst X: "$dir"`（Windows）或 `ln -s` 到无空格路径，再把 `-Djava.library.path` 指向它。
+
 网络正常、使用官方 Maven 的机器不需要这一步。
-
-## 冒烟测试记录（2026-11-08）
-
-- `gradlew build` ✅
-- `gradlew runServer` ✅ 服务端加载、`Done`、共享存档读取正常
-- `gradlew runClient` + 上面的 natives 配置 ✅ 客户端能启动并**成功进入服务器**
-  （服务器日志 `Smoketest joined the game`），游戏内能打开待办列表界面
-- 过程中发现并修复了一个真实问题：**客户端方向的 payload 通道只在客户端注册**，
-  NeoForge 握手会报 `This channel is missing on the server side` 并把玩家踢掉；
-  现已把 `share_snapshot` / `adv_earned` / `adv_data` 三个通道移到公共代码 `NeoPayloads` 注册
