@@ -182,7 +182,13 @@ public final class SharedTasks {
 			return;
 		}
 		if (task.id == null || task.id.isBlank() || task.id.length() > 64) {
-			EasyTaskMgr.LOGGER.warn("拒绝发布：任务 id 非法（{}）", task.id);
+			EasyTaskMgr.LOGGER.warn("拒绝发布：任务 id 非法（{}）", safe(task.id));
+			return;
+		}
+		// 防止用垃圾 id 刷爆共享表
+		long own = BY_ID.values().stream().filter(e -> e.creator.equals(player.getUUID())).count();
+		if (own >= 300 || BY_ID.size() >= 4000) {
+			EasyTaskMgr.LOGGER.warn("拒绝发布：{} 的共享任务过多（{} 条，总计 {}）", player.getName().getString(), own, BY_ID.size());
 			return;
 		}
 		// 成就 / 时间提醒任务的多人支持已移除（issue #4、#13）：服务端直接忽略
@@ -209,22 +215,27 @@ public final class SharedTasks {
 		entry.target = task.target == null ? "" : task.target;
 		Entry old = BY_ID.get(entry.id);
 		if (old != null && !old.creator.equals(entry.creator)) {
-			EasyTaskMgr.LOGGER.warn("拒绝发布：任务 {} 属于 {}，不是 {}", entry.id, old.creatorName, entry.creatorName);
+			EasyTaskMgr.LOGGER.warn("拒绝发布：任务 {} 属于 {}，不是 {}", safe(entry.id), safe(old.creatorName), safe(entry.creatorName));
 			return;
 		}
 		if (old != null) {
 			entry.invited.addAll(old.invited);
 			entry.claimed.addAll(old.claimed);
 			// 完成条件没变就保留已上报的进度与已统计的数量，变了就清零重来
-			entry.done = old.done;
-			if (old.mode == entry.mode) {
+			boolean contentChanged = !Objects.equals(old.json, entry.json);
+			entry.done = !contentChanged && old.done;
+			if (!contentChanged && old.mode == entry.mode) {
 				entry.completedBy.addAll(old.completedBy);
 				entry.maxCounts.putAll(old.maxCounts);
 			}
 		}
 		BY_ID.put(entry.id, entry);
 		dirty = true;
-		changed = true;
+		// 内容与可见性都没变时不广播，减少无意义快照
+		if (old == null || !Objects.equals(old.json, entry.json) || old.visibility != entry.visibility
+				|| old.mode != entry.mode) {
+			changed = true;
+		}
 		EasyTaskMgr.LOGGER.info("{} 发布共享任务 {}（{}，完成条件={}）", entry.creatorName, entry.id, entry.title,
 				modeName(entry.mode));
 		if (old == null || old.visibility != entry.visibility || old.mode != entry.mode
@@ -315,7 +326,7 @@ public final class SharedTasks {
 		int real = countItem(player, entry.target);
 		count = Math.min(count, real);
 		int previous = entry.maxCounts.getOrDefault(uuid, 0);
-		if (count <= previous) {
+		if (count == previous) {
 			return;
 		}
 		entry.maxCounts.put(uuid, count);
@@ -346,7 +357,6 @@ public final class SharedTasks {
 		dirty = false;
 		if (!ShareStore.save(server)) {
 			dirty = true;
-		changed = true;
 		}
 	}
 
@@ -529,6 +539,11 @@ public final class SharedTasks {
 		}
 		return total;
 	}
+	/** 日志里不打印换行 / 制表符，避免伪造日志行。 */
+	private static String safe(String value) {
+		return value == null ? "" : value.replaceAll("[\\r\\n\\t]", " ");
+	}
+
 	/** 把客户端传来的完成条件收敛到合法范围。 */
 	public static int normalizeMode(int mode) {
 		return mode >= MODE_ANY && mode <= MODE_COMBINED ? mode : MODE_ANY_CREATOR;

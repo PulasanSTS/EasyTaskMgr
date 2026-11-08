@@ -49,6 +49,8 @@ public class EasyTaskMgr implements ModInitializer {
 	/** 每个玩家每秒最多处理多少个共享包。 */
 	private static final int MAX_PACKETS_PER_SECOND = 30;
 	private static final Map<UUID, long[]> RATE_LIMIT = new ConcurrentHashMap<>();
+	/** 「共同完成」进度上报的节流（每人每秒最多一次）。 */
+	private static final Map<UUID, Long> LAST_PROGRESS = new ConcurrentHashMap<>();
 
 	private static boolean allowed(ServerPlayer player) {
 		long now = System.currentTimeMillis();
@@ -126,6 +128,11 @@ public class EasyTaskMgr implements ModInitializer {
 					SharedTasks.broadcast(server);
 				}
 			});
+		});
+
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+			RATE_LIMIT.remove(handler.player.getUUID());
+			LAST_PROGRESS.remove(handler.player.getUUID());
 		});
 
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {

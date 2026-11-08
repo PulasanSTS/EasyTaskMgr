@@ -30,7 +30,8 @@ public final class ShareStore {
 	private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
 	private static final String FILE_NAME = "easytaskmgr_share.json";
 	/** 存档格式版本 2：完成条件改成 {@code mode}（0..4），新增 {@code targetCount} / {@code maxCounts} / {@code type}。 */
-	private static final int VERSION = 2;
+	/** 版本 3：新增 target 字段（服务端校验「共同完成」数量用）。 */
+	private static final int VERSION = 3;
 	/** 读档失败后不再覆盖磁盘文件。 */
 	private static boolean loadFailed;
 
@@ -67,7 +68,7 @@ public final class ShareStore {
 				try {
 				SharedTasks.Entry entry = new SharedTasks.Entry();
 				entry.id = string(o, "id");
-				if (entry.id.isBlank()) {
+				if (entry.id.isBlank() || entry.id.length() > 64) {
 					continue;
 				}
 				entry.creator = UUID.fromString(string(o, "creator"));
@@ -86,6 +87,7 @@ public final class ShareStore {
 						: (bool(o, "all") ? SharedTasks.MODE_ALL_CREATOR : SharedTasks.MODE_ANY_CREATOR);
 				entry.targetCount = o.has("targetCount") ? Math.max(1, o.get("targetCount").getAsInt()) : 1;
 				entry.type = TaskType.byName(string(o, "type"));
+				entry.target = string(o, "target");
 				for (JsonElement name : array(o, "invited")) {
 					entry.invited.add(name.getAsString());
 				}
@@ -136,6 +138,7 @@ public final class ShareStore {
 			o.addProperty("mode", entry.mode);
 			o.addProperty("targetCount", entry.targetCount);
 			o.addProperty("type", entry.type.name());
+			o.addProperty("target", entry.target);
 			o.addProperty("done", entry.done);
 			JsonArray invited = new JsonArray();
 			entry.invited.forEach(invited::add);
