@@ -49,3 +49,42 @@ gradlew.bat runClient
 用于绕过某些网络下 `maven.neoforged.net` 不可达的问题。网络正常时它不会影响构建。
 
 详细移植记录见 [PORTING-NOTES.md](PORTING-NOTES.md)。
+
+## 客户端启动（本机工作区特殊网络环境）
+
+本项目为了绕开不可达的 `maven.neoforged.net`，用了本地 `local-maven` 的
+`minecraft-dependencies` POM。它的副作用是 **MDG 生成的启动参数里没有 LWJGL natives**，
+直接 `runClient` 会报：
+
+```
+java.lang.UnsatisfiedLinkError: Failed to locate library: lwjgl.dll
+```
+
+解决办法（一次性，之后每次启动都带上这个环境变量即可）：
+
+```powershell
+# 1) 下载 LWJGL 3.3.3 的 natives（Maven Central 或 https://www.lwjgl.org/browse 同一批文件）
+$mods = 'lwjgl','lwjgl-glfw','lwjgl-opengl','lwjgl-stb','lwjgl-tinyfd','lwjgl-openal','lwjgl-jemalloc','lwjgl-freetype'
+$dir = "$PWD\build\lwjgl-natives"; New-Item -ItemType Directory -Force $dir | Out-Null
+foreach ($m in $mods) {
+    curl.exe -L -o "$env:TEMP\$m.jar" "https://repo1.maven.org/maven2/org/lwjgl/$m/3.3.3/$m-3.3.3-natives-windows.jar"
+    & "$env:JAVA_HOME\bin\jar.exe" xf "$env:TEMP\$m.jar"   # 在 $dir 里执行
+}
+
+# 2) 启动时把 natives 目录告诉 JVM（Gradle 派生的子 JVM 会继承这个变量）
+$env:JAVA_TOOL_OPTIONS = "-Djava.library.path=$dir -Dorg.lwjgl.librarypath=$dir"
+.\gradlew.bat runClient
+```
+
+Linux / macOS 把 classifier 换成 `natives-linux` / `natives-macos`（Apple Silicon 用 `natives-macos-arm64`）。
+网络正常、使用官方 Maven 的机器不需要这一步。
+
+## 冒烟测试记录（2026-11-08）
+
+- `gradlew build` ✅
+- `gradlew runServer` ✅ 服务端加载、`Done`、共享存档读取正常
+- `gradlew runClient` + 上面的 natives 配置 ✅ 客户端能启动并**成功进入服务器**
+  （服务器日志 `Smoketest joined the game`），游戏内能打开待办列表界面
+- 过程中发现并修复了一个真实问题：**客户端方向的 payload 通道只在客户端注册**，
+  NeoForge 握手会报 `This channel is missing on the server side` 并把玩家踢掉；
+  现已把 `share_snapshot` / `adv_earned` / `adv_data` 三个通道移到公共代码 `NeoPayloads` 注册

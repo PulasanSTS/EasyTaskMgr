@@ -26,14 +26,6 @@ public final class EtmClientNet {
 	@SubscribeEvent
 	public static void register(RegisterPayloadHandlersEvent event) {
 		PayloadRegistrar registrar = event.registrar("1");
-		registrar.playToClient(ShareSnapshotS2C.TYPE, ShareSnapshotS2C.CODEC,
-				(payload, context) -> context.enqueueWork(() -> ClientShared.handleSnapshot(payload.json())));
-		registrar.playToClient(AdvancementEarnedS2C.TYPE, AdvancementEarnedS2C.CODEC,
-				(payload, context) -> context.enqueueWork(() -> ClientTasks.completeAdvancement(payload.id())));
-		registrar.playToClient(AdvancementDataS2C.TYPE, AdvancementDataS2C.CODEC,
-				(payload, context) -> context.enqueueWork(() -> {
-					// 成就候选列表（编辑器里的自动补全）暂未移植，先记录日志避免丢包
-					EasyTaskMgrNeo.LOGGER.debug("收到成就数据：{} 字符", payload.json().length());
-				}));
+		// S2C 通道在 NeoPayloads（公共代码）里统一声明，这里不再重复注册
 	}
 }
