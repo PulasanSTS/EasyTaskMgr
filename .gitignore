@@ -43,3 +43,6 @@ replay_*.log
 
 gradle-build.log
 *.log
+# local Minecraft MCP bridge config (contains an access token) - never commit
+**/minecraft_mcp.json
+**/minecraft_mcp.json.*
