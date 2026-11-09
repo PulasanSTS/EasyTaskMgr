@@ -135,6 +135,22 @@ Todos 3
 - When one import publishes more than 3 shared tasks, the chat only gets a single summary line
   (`xxx shared A、B、C … (N tasks in total)`) instead of one line per task.
 
+### Automated regression tests (optional)
+
+The repo ships an optional end-to-end harness driven by
+[Minecraft MCP](https://github.com/MakkCH/minecraft_mcp) (a Fabric 26.3 client mod + JsMacros):
+it creates tasks in a real client, gives items, presses keys and asserts the mod state through the
+bridge the MCP mod exposes on `localhost`.
+
+| Script | What it asserts |
+| --- | --- |
+| `node tools/mcp-tests/single.mjs` | a collect task stays open, then completes within 5s after `/give` adds 5 diamonds (needs op); saves a screenshot |
+| `node tools/mcp-tests/shared.mjs` | client A publishes a shared task, client B claims and completes it, both snapshots report `done` |
+
+Setup and limitations: [`tools/mcp-tests/README.md`](tools/mcp-tests/README.md).
+The client and the dedicated server use separate run directories (`run/` and `run-server/`),
+so the MCP/JsMacros client mods no longer break `runServer`.
+
 ## Configuration & data
 
 | File | Contents |
@@ -379,6 +395,21 @@ EasyTaskMgr 把这些事变成游戏内的待办清单，**在条件满足时主
   `visibility > 0` 的行会直接发布到服务端而不是存本地（需要服务端装同一版本模组），
   成就 / 时间提醒类型的行会降级为本地任务并在提示里计数；
 - 一次导入发布的共享任务超过 3 条时，聊天栏只发一条汇总（`xxx 创建了 A、B、C 等 N 条共享任务`），不会刷屏。
+
+### 自动化回归测试（可选）
+
+仓库里带了一套可选的端到端测试：用 [Minecraft MCP](https://github.com/MakkCH/minecraft_mcp)
+（Fabric 26.3 客户端模组 + JsMacros）驱动真实客户端，通过它在 `localhost` 暴露的桥接来
+创建任务、塞物品、按按键，并断言模组状态。
+
+| 脚本 | 断言内容 |
+| --- | --- |
+| `node tools/mcp-tests/single.mjs` | 收集任务先不完成，`/give` 5 个钻石后 5 秒内自动完成（需要 op）；保存截图 |
+| `node tools/mcp-tests/shared.mjs` | A 发布共享任务，B 认领并完成，两端快照都变成 `done` |
+
+安装步骤与限制见 [`tools/mcp-tests/README.md`](tools/mcp-tests/README.md)。
+客户端与专用服务器现在使用分开的运行目录（`run/` 与 `run-server/`），
+因此 MCP / JsMacros 这类客户端模组不会再把 `runServer` 弄崩。
 
 ## 配置与数据
 
