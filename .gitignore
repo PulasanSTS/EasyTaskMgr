@@ -1,48 +1,35 @@
 # gradle
-
 .gradle/
 build/
 out/
 classes/
-
 # eclipse
-
 *.launch
-
 # idea
-
 .idea/
 *.iml
 *.ipr
 *.iws
-
 # vscode
-
 .settings/
 .vscode/
 bin/
 .classpath
 .project
-
 # macos
-
 *.DS_Store
-
 # fabric
-
 run/
-
 # java
-
 hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
-
 # local build logs
-
 gradle-build.log
 *.log
-# local Minecraft MCP bridge config (contains an access token) - never commit
-**/minecraft_mcp.json
-**/minecraft_mcp.json.*
+
+# MCP regression test artifacts (local only)
+run-server/
+tools/mcp-tests/mods/
+tools/mcp-tests/out/
