@@ -81,7 +81,7 @@ await report.run('shared task', async () => {
   report.check('bridge A', (await a.status()).enabled === true);
   report.check('bridge B', (await b.status()).enabled === true);
 
-  const id = await publishTask(a, 'MCP shared task');
+  const id = await publishTask(a, `MCP shared task ${Date.now()}`);
   report.check('published', typeof id === 'string' && id.length > 0, id);
 
   await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -102,6 +102,12 @@ await report.run('shared task', async () => {
 
   const doneForB = await snapshot(b, id);
   report.check('task completes for B', doneForB.done === true, JSON.stringify(doneForB));
+
+  // 清理：发布者撤回测试任务，避免共享表越积越多
+  await a.execute(`
+Java.type("com.easytaskmgr.client.ClientShared").revoke(${JSON.stringify(id)});
+console.log("REVOKED");
+`);
 
   await mkdir('tools/mcp-tests/out', { recursive: true });
   await writeFile('tools/mcp-tests/out/shared-a.png', await a.screenshot());

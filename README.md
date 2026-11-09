@@ -144,7 +144,7 @@ bridge the MCP mod exposes on `localhost`.
 
 | Script | What it asserts |
 | --- | --- |
-| `node tools/mcp-tests/single.mjs` | a collect task stays open, then completes within ~3s after 5 diamonds are added; saves a screenshot |
+| `node tools/mcp-tests/single.mjs` | a collect task stays open, then completes within 5s after `/give` adds 5 diamonds (needs op); saves a screenshot |
 | `node tools/mcp-tests/shared.mjs` | client A publishes a shared task, client B claims and completes it, both snapshots report `done` |
 
 Setup and limitations: [`tools/mcp-tests/README.md`](tools/mcp-tests/README.md).
@@ -404,7 +404,7 @@ EasyTaskMgr 把这些事变成游戏内的待办清单，**在条件满足时主
 
 | 脚本 | 断言内容 |
 | --- | --- |
-| `node tools/mcp-tests/single.mjs` | 收集任务先不完成，塞入 5 个钻石后约 3 秒内自动完成；保存截图 |
+| `node tools/mcp-tests/single.mjs` | 收集任务先不完成，`/give` 5 个钻石后 5 秒内自动完成（需要 op）；保存截图 |
 | `node tools/mcp-tests/shared.mjs` | A 发布共享任务，B 认领并完成，两端快照都变成 `done` |
 
 安装步骤与限制见 [`tools/mcp-tests/README.md`](tools/mcp-tests/README.md)。

@@ -37,6 +37,9 @@ node tools/mcp-tests/single.mjs
 node tools/mcp-tests/shared.mjs
 ```
 
+> 脚本只从 `config/minecraft_mcp.json`（已被 `.gitignore` 排除）或环境变量读取 token，不会打印或写入仓库。
+> `/give` 需要 op：用 `node tools/mcp-tests/setup-server.mjs --with-op <玩家名>` 显式开启（只合并 ops，不清空已有管理员）。
+
 双人用例的客户端配置可用环境变量覆盖：
 
 ```
@@ -54,9 +57,11 @@ MCP_A_PORT + MCP_A_TOKEN / MCP_B_PORT + MCP_B_TOKEN
 | 脚本 | 断言 |
 | --- | --- |
 | `single.mjs` | 桥接可用；任务创建后未完成；塞入 5 个钻石后 3 秒内自动完成；截图 |
-| `shared.mjs` | A 发布共享任务；B 能看到并可认领；A 的快照显示认领者；B 完成后两端 `done` |
+| `shared.mjs` | A 发布共享任务；B 能看到并可认领；A 的快照显示认领者；B 完成后两端 `done`；结束时 A 撤回任务 |
 
 ## 已知限制
+
+- 脚本验证模组状态与共享快照，**不覆盖界面点击**（HUD / 列表按钮仍需人工或看截图判断）；
 
 - 只支持 Fabric 26.x（MCP 模组的支持范围），NeoForge 1.21.1 移植版无法用它测；
 - `[AGENT]` 聊天里的中文会显示成 `????`，断言文案请用英文；
