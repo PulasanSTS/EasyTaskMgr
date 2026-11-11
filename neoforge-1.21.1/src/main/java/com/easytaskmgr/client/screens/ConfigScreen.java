@@ -109,15 +109,15 @@ public class ConfigScreen extends Screen {
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
 		renderBackground(graphics, mouseX, mouseY, partialTick);
-		graphics.drawCenteredString(font, title, width / 2, height / 2 - 105, 0xFFFFFFFF);
+		graphics.drawCenteredString(font, title, width / 2, height / 2 - 105, 0xFFFFD54F);
 		super.render(graphics, mouseX, mouseY, partialTick);
 		// 预览框：按住拖动即可改 HUD 位置（对应 Fabric 版拖拽）
 		int px = previewX();
 		int py = previewY();
 		graphics.fill(px, py, px + PREVIEW_W, py + PREVIEW_H, 0x66FFFFFF);
-		graphics.drawString(font, ClientUtil.t("cfg.hint"), px, py + PREVIEW_H + 4, 0xFFAAAAAA, false);
+		graphics.drawString(font, ClientUtil.t("cfg.hint"), px, py + PREVIEW_H + 4, 0xFFAAAAAA, true);
 		graphics.drawString(font, ClientUtil.t("hud.title", ClientTasks.active().size()), px + 4, py + 4,
-				0xFFFFFFFF, false);
+				0xFFFFFFFF, true);
 		int active = ClientTasks.active().size();
 		graphics.drawCenteredString(font, Component.literal(ClientUtil.t("hud.title", active)),
 				width / 2, height / 2 + 105, 0xFFAAAAAA);

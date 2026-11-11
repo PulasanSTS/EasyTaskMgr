@@ -132,7 +132,7 @@ public class ListScreen extends Screen {
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
 		renderBackground(graphics, mouseX, mouseY, partialTick);
-		graphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFFFFF);
+		graphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFD54F);
 		graphics.drawCenteredString(font, Component.literal(ClientUtil.t("list.scrollHint")), width / 2, 34, 0xFF888888);
 
 		for (Row row : rows()) {
@@ -140,13 +140,13 @@ public class ListScreen extends Screen {
 				continue;
 			}
 			int color = row.done() ? 0xFF888888 : row.shared() ? 0xFF7FB8FF : 0xFFFFFFFF;
-			graphics.drawString(font, ClientUtil.clip(font, row.text(), width - 220), 20, row.y(), color, false);
+			graphics.drawString(font, ClientUtil.clip(font, row.text(), width - 220), 20, row.y(), color, true);
 			ClientShared.Entry shared = row.shared() ? ClientShared.byId(row.id()) : null;
 			if (!row.shared()) {
-				graphics.drawString(font, "[改]", width - 120, row.y(), 0xFF9AD9FF, false);
-				graphics.drawString(font, "[删]", width - 82, row.y(), 0xFFFF9E9E, false);
+				graphics.drawString(font, "[改]", width - 120, row.y(), 0xFF9AD9FF, true);
+				graphics.drawString(font, "[删]", width - 82, row.y(), 0xFFFF9E9E, true);
 			} else if (shared != null && shared.mine) {
-				graphics.drawString(font, "[撤销]", width - 120, row.y(), 0xFFFF9E9E, false);
+				graphics.drawString(font, "[撤销]", width - 120, row.y(), 0xFFFF9E9E, true);
 			}
 		}
 
@@ -155,7 +155,7 @@ public class ListScreen extends Screen {
 		}
 		super.render(graphics, mouseX, mouseY, partialTick);
 		if (!status.isBlank() && System.currentTimeMillis() < statusUntil) {
-			graphics.drawString(font, status, 6, height - 12, 0xFFCCCCCC, false);
+			graphics.drawString(font, status, 6, height - 12, 0xFFCCCCCC, true);
 		}
 	}
 

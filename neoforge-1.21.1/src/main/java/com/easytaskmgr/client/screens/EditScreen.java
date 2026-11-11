@@ -354,22 +354,22 @@ public class EditScreen extends Screen {
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
 		renderBackground(graphics, mouseX, mouseY, partialTick);
-		graphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFFFFF);
+		graphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFD54F);
 		int cx = width / 2;
-		graphics.drawString(font, ClientUtil.t("edit.content"), cx - 110, 30, 0xFFAAAAAA, false);
-		graphics.drawString(font, ClientUtil.t("edit.remind"), cx - 150, 86, 0xFFAAAAAA, false);
+		graphics.drawString(font, ClientUtil.t("edit.content"), cx - 110, 30, 0xFFAAAAAA, true);
+		graphics.drawString(font, ClientUtil.t("edit.remind"), cx - 150, 86, 0xFFAAAAAA, true);
 
 		refreshSuggestions();
 		int sugY = 88;
 		for (String[] suggestion : suggestions) {
 			boolean hover = mouseX >= cx + 120 && mouseX <= cx + 280 && mouseY >= sugY && mouseY < sugY + 10;
 			graphics.drawString(font, ClientUtil.clip(font, suggestion[1], 150), cx + 120, sugY,
-					hover ? 0xFFFFFF00 : 0xFF9AD9FF, false);
+					hover ? 0xFFFFFF00 : 0xFF9AD9FF, true);
 			sugY += 10;
 		}
 		if (!detailLine.isBlank()) {
 			graphics.drawString(font, ClientUtil.clip(font, detailLine, 320), cx - 150, sugY + 4,
-					0xFFB0FFB0, false);
+					0xFFB0FFB0, true);
 		}
 		super.render(graphics, mouseX, mouseY, partialTick);
 	}
