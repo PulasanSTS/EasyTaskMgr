@@ -21,7 +21,7 @@ gradlew.bat runServer
 gradlew.bat runClient
 ```
 
-产物：`build/libs/easytaskmgr-neoforge-1.0.1-neoforge-alpha.1.jar`（首个 alpha 版本）
+产物：`build/libs/easytaskmgr-neoforge-1.0.1-neoforge-alpha.1.jar`（alpha.2：HUD 与四个界面已完成 Fabric 样式对齐）
 
 ## 当前状态
 
@@ -145,4 +145,4 @@ export JAVA_TOOL_OPTIONS="-Djava.library.path=\"$dir\" -Dorg.lwjgl.librarypath=\
   - 列表缺「显示已完成」开关。
 ## 版本说明
 
-- **1.0.1-neoforge-alpha.1**：首个 NeoForge 1.21.1 alpha 构建，功能与 Fabric 1.0.1 对齐（服务端已实测，客户端界面仍在小范围打磨）。
+- **1.0.1-neoforge-alpha.2**：HUD 与四个界面已按 Fabric 端统一（深色遮罩、金色标题、优先级着色、长文本换行）。`r`n- **1.0.1-neoforge-alpha.1**：首个 NeoForge 1.21.1 alpha 构建。

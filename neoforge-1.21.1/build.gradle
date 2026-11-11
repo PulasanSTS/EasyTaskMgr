@@ -3,7 +3,7 @@ plugins {
     id 'net.neoforged.moddev' version '2.0.148'
 }
 
-version = '1.0.1-neoforge-alpha.1'
+version = '1.0.1-neoforge-alpha.2'
 group = 'com.easytaskmgr'
 base {
     archivesName = 'easytaskmgr-neoforge'
