@@ -353,8 +353,9 @@ public class EditScreen extends Screen {
 
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-		renderBackground(graphics, mouseX, mouseY, partialTick);
-		graphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFD54F);
+		// 与 Fabric 一致：深色遮罩 + 带阴影的金色标题
+		graphics.fill(0, 0, width, height, 0xE0101014);
+		ClientUtil.centered(graphics, font, title.getString(), width / 2, 22, 0xFFFFD54F);
 		int cx = width / 2;
 		graphics.drawString(font, ClientUtil.t("edit.content"), cx - 110, 30, 0xFFB0BEC5, true);
 		graphics.drawString(font, ClientUtil.t("edit.remind"), cx - 150, 86, 0xFFB0BEC5, true);

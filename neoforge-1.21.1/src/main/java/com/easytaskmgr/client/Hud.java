@@ -139,7 +139,8 @@ public final class Hud implements net.minecraft.client.gui.LayeredDraw.Layer {
 				}
 				x += font.width(row.prefix());
 			}
-			graphics.drawString(font, ClientUtil.clip(font, row.text(), right - x - 2), x, y, row.color(), true);
+			// wrap() 已按宽度换行，这里不再裁剪，避免把超宽字符裁掉
+			graphics.drawString(font, row.text(), x, y, row.color(), true);
 			if (cfg.hudInteractive && y + lineHeight <= bottom - 1) {
 				if (row.taskId() != null) {
 					HITS.add(new Hit(left, y - 1, right, y + lineHeight, row.taskId(), null));
