@@ -157,7 +157,7 @@ public class ListScreen extends Screen {
 		int count = 0;
 		for (int i = scroll; i < rows.size(); i++) {
 			int h = rows.get(i).height();
-			if (y + h > height - 46) {
+			if (y + h > height - 52) {
 				break;
 			}
 			y += h;
@@ -185,7 +185,7 @@ public class ListScreen extends Screen {
 		int y = LIST_TOP;
 		for (int i = scroll; i < rows.size(); i++) {
 			RowData row = rows.get(i);
-			if (y + row.height() > height - 46) {
+			if (y + row.height() > height - 52) {
 				break;
 			}
 			int color = row.done() ? 0xFF757575
@@ -214,7 +214,7 @@ public class ListScreen extends Screen {
 		// 滚动条
 		int barX = width - 6;
 		int barTop = LIST_TOP;
-		int barHeight = Math.max(20, height - 46 - LIST_TOP);
+		int barHeight = Math.max(20, height - 52 - LIST_TOP);
 		graphics.fill(barX, barTop, barX + 3, barTop + barHeight, 0x33FFFFFF);
 		if (rows.size() > visible) {
 			int thumb = Math.max(12, barHeight * visible / rows.size());
@@ -225,14 +225,14 @@ public class ListScreen extends Screen {
 		super.render(graphics, mouseX, mouseY, partialTick);
 
 		if (!status.isBlank() && System.currentTimeMillis() < statusUntil) {
-			graphics.drawString(font, status, 6, height - 12, 0xFF8BC34A, true);
+			graphics.drawString(font, status, 6, height - 14, 0xFF8BC34A, true);
 		} else {
 			graphics.drawString(font, ClientUtil.t("list.footer",
 					com.easytaskmgr.client.EtmClient.KEY_QUICK_ADD.getTranslatedKeyMessage().getString(),
 					com.easytaskmgr.client.EtmClient.KEY_LIST.getTranslatedKeyMessage().getString(),
 					com.easytaskmgr.client.EtmClient.KEY_CONFIG.getTranslatedKeyMessage().getString(),
 					com.easytaskmgr.client.EtmClient.KEY_TOGGLE_HUD.getTranslatedKeyMessage().getString()),
-					6, height - 12, 0xFF78909C, true);
+					6, height - 14, 0xFF78909C, true);
 		}
 	}
 
@@ -246,7 +246,7 @@ public class ListScreen extends Screen {
 		int y = LIST_TOP;
 		for (int i = scroll; i < rows.size(); i++) {
 			RowData row = rows.get(i);
-			if (y + row.height() > height - 46) {
+			if (y + row.height() > height - 52) {
 				break;
 			}
 			if (mouseY >= y && mouseY <= y + row.height() - 2) {
