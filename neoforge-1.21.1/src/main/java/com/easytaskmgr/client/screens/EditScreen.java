@@ -19,15 +19,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 新建 / 编辑待办。
- *
- * <p>字段按类型显示（Fabric 版行为）：收集只显示目标与数量，成就只显示目标，
- * 坐标显示 x/y/z/半径，定时显示提醒方式与时间参数；内容与附加提醒始终显示。
- *
- * <p>输入物品 / 成就名时下方出现候选（最多 8 条），选中成就时再显示一行
- * 「描述 · 前置成就」，对应 Fabric 版的成就详情面板。
+ * 新建 / 编辑待办，布局与 Fabric 版 {@code TaskEditScreen} 对齐：
+ * 300px 宽的一列，从上到下依次为内容 / 类型+优先级 / 目标 / 参数 / 共享 / 附加提醒 / 按钮，
+ * 标签统一灰蓝、标题金色带阴影，长文本不再挤在一起（issue #43）。
  */
 public class EditScreen extends Screen {
+	private static final int CONTENT_WIDTH = 300;
+	private static final int FIELD_HEIGHT = 16;
+	private static final int ROW = 22;
+
 	private final Task task;
 	private final boolean creating;
 	private EditBox textBox;
@@ -42,17 +42,16 @@ public class EditScreen extends Screen {
 	private EditBox minuteBox;
 	private EditBox dayBox;
 	private EditBox remindBox;
+	private Button typeButton;
+	private Button visibilityButton;
+	private Button shareButton;
 
-	/** 当前候选（id, 显示名, 描述, 前置成就名）。 */
 	private final List<String[]> suggestions = new ArrayList<>();
-	/** 选中成就后显示的详情行。 */
 	private String detailLine = "";
-	/** 详情对应的成就 id，目标被改写后清空详情。 */
 	private String detailFor = "";
 
 	public EditScreen(Task existing) {
 		super(Component.literal(ClientUtil.t(existing == null ? "edit.new" : "edit.edit")));
-		// 编辑副本：取消时不会把改动留在仓库对象上
 		this.task = existing == null ? new Task() : copyOf(existing);
 		this.creating = existing == null;
 		if (this.task.shareMode < 0) {
@@ -62,65 +61,140 @@ public class EditScreen extends Screen {
 
 	@Override
 	protected void init() {
-		int cx = width / 2;
-		int top = 40;
-		textBox = box(cx - 110, top, 220, task.text);
-		targetBox = box(cx + 120, top, 160, task.target);
-		countBox = box(cx + 120, top + 24, 60, Integer.toString(task.targetCount));
+		int x0 = width / 2 - CONTENT_WIDTH / 2;
+		int y = 30;
 
-		xBox = box(cx - 150, top + 48, 60, fmt(task.x));
-		yBox = box(cx - 84, top + 48, 60, fmt(task.y));
-		zBox = box(cx - 18, top + 48, 60, fmt(task.z));
-		radiusBox = box(cx + 48, top + 48, 60, Integer.toString(task.radius));
+		// 内容
+		textBox = addRenderableWidget(new EditBox(font, x0, y + 10, CONTENT_WIDTH, FIELD_HEIGHT, Component.literal("")));
+		textBox.setMaxLength(120);
+		textBox.setValue(task.text);
+		y += 32;
 
-		minutesBox = box(cx - 150, top + 48, 60, Integer.toString(task.intervalMinutes));
-		hourBox = box(cx - 84, top + 48, 50, Integer.toString(task.gameHour));
-		minuteBox = box(cx - 28, top + 48, 50, Integer.toString(task.gameMinute));
-		dayBox = box(cx + 28, top + 48, 50, Integer.toString(task.gameDayInterval));
-
-		remindBox = box(cx - 150, top + 96, 300, task.remindText);
-
-		int y = top + 124;
-		addRenderableWidget(Button.builder(typeLabel(), b -> {
+		// 类型 + 优先级
+		typeButton = addRenderableWidget(Button.builder(typeLabel(), b -> {
+			captureFields();
 			task.type = nextType(task.type);
-			b.setMessage(typeLabel());
-			applyFieldVisibility();
-		}).bounds(cx - 150, y, 140, 20).build());
+			if (task.type == TaskType.ADVANCEMENT || task.type == TaskType.TIMER) {
+				task.visibility = 0;
+			}
+			rebuildWidgets();
+		}).bounds(x0, y, 140, FIELD_HEIGHT).build());
 		addRenderableWidget(Button.builder(priorityLabel(), b -> {
 			task.priority = Priority.byWeight(task.priority).next().weight();
 			b.setMessage(priorityLabel());
-		}).bounds(cx + 10, y, 140, 20).build());
-		y += 24;
-		addRenderableWidget(Button.builder(timerLabel(), b -> {
-			task.timerMode = nextTimer(task.timerMode);
-			b.setMessage(timerLabel());
-			applyFieldVisibility();
-		}).bounds(cx - 150, y, 140, 20).build());
-		addRenderableWidget(Button.builder(visibilityLabel(), b -> {
+		}).bounds(x0 + 148, y, 140, FIELD_HEIGHT).build());
+		y += ROW + 4;
+
+		// 目标 / 坐标 / 定时参数
+		if (task.type == TaskType.COLLECT) {
+			targetBox = addRenderableWidget(new EditBox(font, x0, y, CONTENT_WIDTH - 60, FIELD_HEIGHT, Component.literal("")));
+			targetBox.setMaxLength(120);
+			targetBox.setValue(task.target);
+			countBox = addRenderableWidget(new EditBox(font, x0 + CONTENT_WIDTH - 54, y, 54, FIELD_HEIGHT, Component.literal("")));
+			countBox.setValue(Integer.toString(task.targetCount));
+		} else if (task.type == TaskType.ADVANCEMENT) {
+			targetBox = addRenderableWidget(new EditBox(font, x0, y, CONTENT_WIDTH, FIELD_HEIGHT, Component.literal("")));
+			targetBox.setMaxLength(160);
+			targetBox.setValue(task.target);
+		} else if (task.type == TaskType.COORDINATE) {
+			xBox = addRenderableWidget(new EditBox(font, x0, y, 60, FIELD_HEIGHT, Component.literal("")));
+			xBox.setValue(fmt(task.x));
+			yBox = addRenderableWidget(new EditBox(font, x0 + 66, y, 60, FIELD_HEIGHT, Component.literal("")));
+			yBox.setValue(fmt(task.y));
+			zBox = addRenderableWidget(new EditBox(font, x0 + 132, y, 60, FIELD_HEIGHT, Component.literal("")));
+			zBox.setValue(fmt(task.z));
+			radiusBox = addRenderableWidget(new EditBox(font, x0 + 198, y, 54, FIELD_HEIGHT, Component.literal("")));
+			radiusBox.setValue(Integer.toString(task.radius));
+		} else if (task.type == TaskType.TIMER) {
+			addRenderableWidget(Button.builder(timerLabel(), b -> {
+				captureFields();
+				task.timerMode = nextTimer(task.timerMode);
+				rebuildWidgets();
+			}).bounds(x0, y, 150, FIELD_HEIGHT).build());
+			if (task.timerMode == TimerMode.INTERVAL) {
+				minutesBox = addRenderableWidget(new EditBox(font, x0 + 158, y, 54, FIELD_HEIGHT, Component.literal("")));
+				minutesBox.setValue(Integer.toString(task.intervalMinutes));
+			} else if (task.timerMode == TimerMode.GAME_TIME) {
+				hourBox = addRenderableWidget(new EditBox(font, x0 + 158, y, 42, FIELD_HEIGHT, Component.literal("")));
+				hourBox.setValue(Integer.toString(task.gameHour));
+				minuteBox = addRenderableWidget(new EditBox(font, x0 + 204, y, 42, FIELD_HEIGHT, Component.literal("")));
+				minuteBox.setValue(Integer.toString(task.gameMinute));
+				dayBox = addRenderableWidget(new EditBox(font, x0 + 250, y, 44, FIELD_HEIGHT, Component.literal("")));
+				dayBox.setValue(Integer.toString(task.gameDayInterval));
+			}
+		}
+		if (targetBox != null) {
+			y += ROW + 2;
+		} else {
+			y += ROW + 2;
+		}
+
+		// 共享：可见性 + 完成条件
+		visibilityButton = addRenderableWidget(Button.builder(visibilityLabel(), b -> {
 			task.visibility = task.visibility >= 2 ? 0 : task.visibility + 1;
 			b.setMessage(visibilityLabel());
-		}).bounds(cx + 10, y, 140, 20).build());
-		y += 24;
-		addRenderableWidget(Button.builder(shareLabel(), b -> {
+		}).bounds(x0, y, 140, FIELD_HEIGHT).build());
+		shareButton = addRenderableWidget(Button.builder(shareLabel(), b -> {
 			task.shareMode = (task.shareMode + 1) % 5;
 			b.setMessage(shareLabel());
-		}).bounds(cx - 150, y, 140, 20).build());
+		}).bounds(x0 + 148, y, 140, FIELD_HEIGHT).build());
+		y += ROW + 4;
+
+		// 附加提醒
+		remindBox = addRenderableWidget(new EditBox(font, x0, y, CONTENT_WIDTH, FIELD_HEIGHT, Component.literal("")));
+		remindBox.setMaxLength(160);
+		remindBox.setValue(task.remindText);
+		y += ROW + 10;
+
+		// 按钮：窗口太矮时上移，避免被裁掉
+		int buttonY = Math.min(y, height - 42);
 		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.save")), b -> save())
-				.bounds(cx + 10, y, 140, 20).build());
-		y += 24;
+				.bounds(x0, buttonY, 140, 20).build());
 		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.cancel")), b -> onClose())
-				.bounds(cx - 150, y, 300, 20).build());
+				.bounds(x0 + 148, buttonY, 140, 20).build());
 
 		applyFieldVisibility();
 	}
 
-	/** 按任务类型显示 / 隐藏输入框。 */
+	/** 切换类型 / 提醒方式前把当前输入写回任务，避免重建控件时丢掉未保存的内容。 */
+	private void captureFields() {
+		if (textBox != null) {
+			task.text = textBox.getValue();
+		}
+		if (remindBox != null) {
+			task.remindText = remindBox.getValue();
+		}
+		if (targetBox != null && targetBox.isVisible()) {
+			task.target = targetBox.getValue().trim();
+		}
+		if (countBox != null && countBox.isVisible()) {
+			if (task.type == TaskType.COLLECT) {
+				task.targetCount = Math.max(1, parseInt(countBox, task.targetCount));
+			} else if (task.type == TaskType.COORDINATE) {
+				task.radius = Math.max(1, parseInt(countBox, task.radius));
+			}
+		}
+		if (xBox != null) {
+			task.x = parseDouble(xBox, task.x);
+			task.y = parseDouble(yBox, task.y);
+			task.z = parseDouble(zBox, task.z);
+		}
+		if (minutesBox != null) {
+			task.intervalMinutes = Math.max(1, parseInt(minutesBox, task.intervalMinutes));
+		}
+		if (hourBox != null) {
+			task.gameHour = Math.min(23, Math.max(0, parseInt(hourBox, task.gameHour)));
+			task.gameMinute = Math.min(59, Math.max(0, parseInt(minuteBox, task.gameMinute)));
+			task.gameDayInterval = Math.max(1, parseInt(dayBox, task.gameDayInterval));
+		}
+	}
+
+	/** 目标/参数输入框在重建时按类型创建，这里只需要控制坐标/时间参数的可见性。 */
 	private void applyFieldVisibility() {
 		boolean collect = task.type == TaskType.COLLECT;
 		boolean advancement = task.type == TaskType.ADVANCEMENT;
 		boolean coordinate = task.type == TaskType.COORDINATE;
 		boolean timer = task.type == TaskType.TIMER;
-
 		setVisible(targetBox, collect || advancement);
 		setVisible(countBox, collect);
 		setVisible(xBox, coordinate);
@@ -138,14 +212,6 @@ public class EditScreen extends Screen {
 			box.setVisible(visible);
 			box.setEditable(visible);
 		}
-	}
-
-	private EditBox box(int x, int y, int w, String value) {
-		EditBox box = new EditBox(font, x, y, w, 18, Component.literal(""));
-		box.setValue(value == null ? "" : value);
-		box.setMaxLength(200);
-		addRenderableWidget(box);
-		return box;
 	}
 
 	private static Task copyOf(Task source) {
@@ -202,7 +268,6 @@ public class EditScreen extends Screen {
 		return Component.literal(ClientUtil.t("ui.priority", Priority.byWeight(task.priority).label()));
 	}
 
-	/** 短标签，避免英文文案在按钮里被截断。 */
 	private Component timerLabel() {
 		String mode = switch (task.timerMode) {
 			case ON_JOIN -> ClientUtil.t("timer.join");
@@ -238,7 +303,7 @@ public class EditScreen extends Screen {
 		};
 	}
 
-	/** 刷新候选；成就额外带「描述 / 前置成就」。 */
+	/** 刷新候选；成就额外带描述与前置成就。 */
 	private void refreshSuggestions() {
 		suggestions.clear();
 		if (targetBox == null || !targetBox.isVisible()) {
@@ -318,15 +383,21 @@ public class EditScreen extends Screen {
 		if (task.type == TaskType.COLLECT) {
 			task.targetCount = Math.max(1, parseInt(countBox, 1));
 		}
-		// 无论当前类型如何都读一遍：隐藏的输入框保留原值，切换类型不会丢数据（review #2）
-		task.x = parseDouble(xBox, task.x);
-		task.y = parseDouble(yBox, task.y);
-		task.z = parseDouble(zBox, task.z);
-		task.radius = Math.max(1, parseInt(radiusBox, task.radius));
-		task.intervalMinutes = Math.max(1, parseInt(minutesBox, task.intervalMinutes));
-		task.gameHour = Math.min(23, Math.max(0, parseInt(hourBox, task.gameHour)));
-		task.gameMinute = Math.min(59, Math.max(0, parseInt(minuteBox, task.gameMinute)));
-		task.gameDayInterval = Math.max(1, parseInt(dayBox, task.gameDayInterval));
+		if (task.type == TaskType.COORDINATE) {
+			task.x = parseDouble(xBox, task.x);
+			task.y = parseDouble(yBox, task.y);
+			task.z = parseDouble(zBox, task.z);
+			task.radius = Math.max(1, parseInt(radiusBox, task.radius));
+		}
+		if (task.type == TaskType.TIMER) {
+			if (task.timerMode == TimerMode.INTERVAL && minutesBox != null) {
+				task.intervalMinutes = Math.max(1, parseInt(minutesBox, task.intervalMinutes));
+			} else if (task.timerMode == TimerMode.GAME_TIME && hourBox != null) {
+				task.gameHour = Math.min(23, Math.max(0, parseInt(hourBox, task.gameHour)));
+				task.gameMinute = Math.min(59, Math.max(0, parseInt(minuteBox, task.gameMinute)));
+				task.gameDayInterval = Math.max(1, parseInt(dayBox, task.gameDayInterval));
+			}
+		}
 		task.remindText = remindBox.getValue().trim();
 		task.normalize();
 		if (creating) {
@@ -353,26 +424,43 @@ public class EditScreen extends Screen {
 
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-		// 与 Fabric 一致：深色遮罩 + 带阴影的金色标题
 		graphics.fill(0, 0, width, height, 0xE0101014);
-		ClientUtil.centered(graphics, font, title.getString(), width / 2, 22, 0xFFFFD54F);
-		int cx = width / 2;
-		graphics.drawString(font, ClientUtil.t("edit.content"), cx - 110, 30, 0xFFB0BEC5, true);
-		graphics.drawString(font, ClientUtil.t("edit.remind"), cx - 150, 86, 0xFFB0BEC5, true);
+		ClientUtil.centered(graphics, font, title.getString(), width / 2, 14, 0xFFFFD54F);
+
+		int x0 = width / 2 - CONTENT_WIDTH / 2;
+		// 与 init() 的固定行位置保持一致
+		label(graphics, ClientUtil.t("edit.content"), x0, 30);
+		label(graphics, switch (task.type) {
+			case TIMER -> ClientUtil.t("edit.timerHint");
+			case COORDINATE -> ClientUtil.t("edit.coordHint");
+			case ADVANCEMENT -> ClientUtil.t("edit.advHint");
+			case COLLECT -> ClientUtil.t("edit.itemHint");
+			case NORMAL -> ClientUtil.t("edit.normalHint");
+		}, x0, 76);
+		label(graphics, ClientUtil.t("edit.remind"), x0, 128);
+		if (task.type == TaskType.ADVANCEMENT || task.type == TaskType.TIMER) {
+			graphics.drawString(font, ClientUtil.t("edit.noShare"), x0, 160, 0xFF9E9E9E, true);
+		}
 
 		refreshSuggestions();
-		int sugY = 88;
+		int sugX = Math.min(x0 + CONTENT_WIDTH + 4, Math.max(x0, width - 168));
+		int sugY = 62;
 		for (String[] suggestion : suggestions) {
-			boolean hover = mouseX >= cx + 120 && mouseX <= cx + 280 && mouseY >= sugY && mouseY < sugY + 10;
-			graphics.drawString(font, ClientUtil.clip(font, suggestion[1], 150), cx + 120, sugY,
+			boolean hover = mouseX >= sugX && mouseX <= sugX + 160
+					&& mouseY >= sugY && mouseY < sugY + 10;
+			graphics.drawString(font, ClientUtil.clip(font, suggestion[1], 150), sugX, sugY,
 					hover ? 0xFFFFFF00 : 0xFF9AD9FF, true);
 			sugY += 10;
 		}
 		if (!detailLine.isBlank()) {
-			graphics.drawString(font, ClientUtil.clip(font, detailLine, 320), cx - 150, sugY + 4,
-					0xFFB0FFB0, true);
+			graphics.drawString(font, ClientUtil.clip(font, detailLine, Math.min(320, width - x0 - 8)), x0,
+					Math.min(height - 12, sugY + 2), 0xFFB0FFB0, true);
 		}
 		super.render(graphics, mouseX, mouseY, partialTick);
+	}
+
+	private void label(GuiGraphics graphics, String text, int x, int y) {
+		graphics.drawString(font, ClientUtil.clip(font, text, CONTENT_WIDTH), x, y, 0xFFB0BEC5, true);
 	}
 
 	@Override
@@ -380,11 +468,13 @@ public class EditScreen extends Screen {
 		if (super.mouseClicked(mouseX, mouseY, button)) {
 			return true;
 		}
-		int cx = width / 2;
-		int sugY = 88;
+		int x0 = width / 2 - CONTENT_WIDTH / 2;
+		int sugX = Math.min(x0 + CONTENT_WIDTH + 4, Math.max(x0, width - 168));
+		int sugY = 62;
 		List<String[]> snapshot = new ArrayList<>(suggestions);
 		for (String[] suggestion : snapshot) {
-			if (mouseX >= cx + 120 && mouseX <= cx + 280 && mouseY >= sugY && mouseY < sugY + 10) {
+			if (mouseX >= sugX && mouseX <= sugX + 160
+					&& mouseY >= sugY && mouseY < sugY + 10) {
 				targetBox.setValue(suggestion[0]);
 				detailLine = suggestion[2].isBlank()
 						? ""
@@ -394,7 +484,7 @@ public class EditScreen extends Screen {
 			}
 			sugY += 10;
 		}
-		return super.mouseClicked(mouseX, mouseY, button);
+		return false;
 	}
 
 	@Override
