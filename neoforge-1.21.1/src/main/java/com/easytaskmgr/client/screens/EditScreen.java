@@ -356,8 +356,8 @@ public class EditScreen extends Screen {
 		renderBackground(graphics, mouseX, mouseY, partialTick);
 		graphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFD54F);
 		int cx = width / 2;
-		graphics.drawString(font, ClientUtil.t("edit.content"), cx - 110, 30, 0xFFAAAAAA, true);
-		graphics.drawString(font, ClientUtil.t("edit.remind"), cx - 150, 86, 0xFFAAAAAA, true);
+		graphics.drawString(font, ClientUtil.t("edit.content"), cx - 110, 30, 0xFFB0BEC5, true);
+		graphics.drawString(font, ClientUtil.t("edit.remind"), cx - 150, 86, 0xFFB0BEC5, true);
 
 		refreshSuggestions();
 		int sugY = 88;
