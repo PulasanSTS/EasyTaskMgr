@@ -72,6 +72,7 @@ public class EditScreen extends Screen {
 
 		// 类型 + 优先级
 		typeButton = addRenderableWidget(Button.builder(typeLabel(), b -> {
+			captureFields();
 			task.type = nextType(task.type);
 			if (task.type == TaskType.ADVANCEMENT || task.type == TaskType.TIMER) {
 				task.visibility = 0;
@@ -106,6 +107,7 @@ public class EditScreen extends Screen {
 			radiusBox.setValue(Integer.toString(task.radius));
 		} else if (task.type == TaskType.TIMER) {
 			addRenderableWidget(Button.builder(timerLabel(), b -> {
+				captureFields();
 				task.timerMode = nextTimer(task.timerMode);
 				rebuildWidgets();
 			}).bounds(x0, y, 150, FIELD_HEIGHT).build());
@@ -144,13 +146,47 @@ public class EditScreen extends Screen {
 		remindBox.setValue(task.remindText);
 		y += ROW + 10;
 
-		// 按钮
+		// 按钮：窗口太矮时上移，避免被裁掉
+		int buttonY = Math.min(y, height - 42);
 		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.save")), b -> save())
-				.bounds(x0, y, 140, 20).build());
+				.bounds(x0, buttonY, 140, 20).build());
 		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.cancel")), b -> onClose())
-				.bounds(x0 + 148, y, 140, 20).build());
+				.bounds(x0 + 148, buttonY, 140, 20).build());
 
 		applyFieldVisibility();
+	}
+
+	/** 切换类型 / 提醒方式前把当前输入写回任务，避免重建控件时丢掉未保存的内容。 */
+	private void captureFields() {
+		if (textBox != null) {
+			task.text = textBox.getValue();
+		}
+		if (remindBox != null) {
+			task.remindText = remindBox.getValue();
+		}
+		if (targetBox != null && targetBox.isVisible()) {
+			task.target = targetBox.getValue().trim();
+		}
+		if (countBox != null && countBox.isVisible()) {
+			if (task.type == TaskType.COLLECT) {
+				task.targetCount = Math.max(1, parseInt(countBox, task.targetCount));
+			} else if (task.type == TaskType.COORDINATE) {
+				task.radius = Math.max(1, parseInt(countBox, task.radius));
+			}
+		}
+		if (xBox != null) {
+			task.x = parseDouble(xBox, task.x);
+			task.y = parseDouble(yBox, task.y);
+			task.z = parseDouble(zBox, task.z);
+		}
+		if (minutesBox != null) {
+			task.intervalMinutes = Math.max(1, parseInt(minutesBox, task.intervalMinutes));
+		}
+		if (hourBox != null) {
+			task.gameHour = Math.min(23, Math.max(0, parseInt(hourBox, task.gameHour)));
+			task.gameMinute = Math.min(59, Math.max(0, parseInt(minuteBox, task.gameMinute)));
+			task.gameDayInterval = Math.max(1, parseInt(dayBox, task.gameDayInterval));
+		}
 	}
 
 	/** 目标/参数输入框在重建时按类型创建，这里只需要控制坐标/时间参数的可见性。 */
@@ -394,26 +430,31 @@ public class EditScreen extends Screen {
 		int x0 = width / 2 - CONTENT_WIDTH / 2;
 		// 与 init() 的固定行位置保持一致
 		label(graphics, ClientUtil.t("edit.content"), x0, 30);
-		label(graphics, task.type == TaskType.TIMER ? ClientUtil.t("edit.timerHint")
-				: task.type == TaskType.COORDINATE ? ClientUtil.t("edit.coordHint")
-				: task.type == TaskType.ADVANCEMENT ? ClientUtil.t("edit.advHint")
-				: ClientUtil.t("edit.itemHint"), x0, 76);
+		label(graphics, switch (task.type) {
+			case TIMER -> ClientUtil.t("edit.timerHint");
+			case COORDINATE -> ClientUtil.t("edit.coordHint");
+			case ADVANCEMENT -> ClientUtil.t("edit.advHint");
+			case COLLECT -> ClientUtil.t("edit.itemHint");
+			case NORMAL -> ClientUtil.t("edit.normalHint");
+		}, x0, 76);
 		label(graphics, ClientUtil.t("edit.remind"), x0, 128);
 		if (task.type == TaskType.ADVANCEMENT || task.type == TaskType.TIMER) {
-			graphics.drawString(font, ClientUtil.t("edit.noShare"), x0, 158, 0xFF9E9E9E, true);
+			graphics.drawString(font, ClientUtil.t("edit.noShare"), x0, 160, 0xFF9E9E9E, true);
 		}
 
 		refreshSuggestions();
+		int sugX = Math.min(x0 + CONTENT_WIDTH + 4, Math.max(x0, width - 168));
 		int sugY = 62;
 		for (String[] suggestion : suggestions) {
-			boolean hover = mouseX >= x0 + CONTENT_WIDTH && mouseX <= x0 + CONTENT_WIDTH + 160
+			boolean hover = mouseX >= sugX && mouseX <= sugX + 160
 					&& mouseY >= sugY && mouseY < sugY + 10;
-			graphics.drawString(font, ClientUtil.clip(font, suggestion[1], 150), x0 + CONTENT_WIDTH + 4, sugY,
+			graphics.drawString(font, ClientUtil.clip(font, suggestion[1], 150), sugX, sugY,
 					hover ? 0xFFFFFF00 : 0xFF9AD9FF, true);
 			sugY += 10;
 		}
 		if (!detailLine.isBlank()) {
-			graphics.drawString(font, ClientUtil.clip(font, detailLine, 320), x0, sugY + 2, 0xFFB0FFB0, true);
+			graphics.drawString(font, ClientUtil.clip(font, detailLine, Math.min(320, width - x0 - 8)), x0,
+					Math.min(height - 12, sugY + 2), 0xFFB0FFB0, true);
 		}
 		super.render(graphics, mouseX, mouseY, partialTick);
 	}
@@ -428,10 +469,11 @@ public class EditScreen extends Screen {
 			return true;
 		}
 		int x0 = width / 2 - CONTENT_WIDTH / 2;
+		int sugX = Math.min(x0 + CONTENT_WIDTH + 4, Math.max(x0, width - 168));
 		int sugY = 62;
 		List<String[]> snapshot = new ArrayList<>(suggestions);
 		for (String[] suggestion : snapshot) {
-			if (mouseX >= x0 + CONTENT_WIDTH && mouseX <= x0 + CONTENT_WIDTH + 160
+			if (mouseX >= sugX && mouseX <= sugX + 160
 					&& mouseY >= sugY && mouseY < sugY + 10) {
 				targetBox.setValue(suggestion[0]);
 				detailLine = suggestion[2].isBlank()

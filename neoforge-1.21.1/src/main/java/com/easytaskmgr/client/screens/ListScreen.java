@@ -47,28 +47,28 @@ public class ListScreen extends Screen {
 
 	@Override
 	protected void init() {
-		int y = height - 26;
-		int x = width / 2 - 195;
-		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.new")), b -> minecraft.setScreen(new EditScreen(null)))
-				.bounds(x, y, 60, 20).build());
-		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.settings")), b -> minecraft.setScreen(new ConfigScreen()))
-				.bounds(x + 62, y, 50, 20).build());
+		// 与 Fabric 一致：按钮在 height-46，页脚在 height-14，顺序也与 Fabric 相同（issue #42）
+		int y = height - 46;
+		int x = width / 2 - 192;
 		addRenderableWidget(Button.builder(doneToggleLabel(), b -> {
 			showDone = !showDone;
 			b.setMessage(doneToggleLabel());
-		}).bounds(x + 114, y, 70, 20).build());
+		}).bounds(x, y, 70, 18).build());
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.new")), b -> minecraft.setScreen(new EditScreen(null)))
+				.bounds(x + 74, y, 40, 18).build());
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.settings")), b -> minecraft.setScreen(new ConfigScreen()))
+				.bounds(x + 118, y, 40, 18).build());
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.close")), b -> onClose())
+				.bounds(x + 162, y, 40, 18).build());
 		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.clearDone")), b -> {
 			TaskStore.get().clearCompleted();
 			TaskStore.get().save();
-		}).bounds(x + 186, y, 60, 20).build());
-		addRenderableWidget(Button.builder(Component.literal("CSV ↑"), b -> exportCsv())
-				.bounds(x + 248, y, 50, 20).build());
-		addRenderableWidget(Button.builder(Component.literal("CSV ↓"), b -> importCsv())
-				.bounds(x + 300, y, 50, 20).build());
-		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("ui.close")), b -> onClose())
-				.bounds(x + 352, y, 50, 20).build());
+		}).bounds(x + 206, y, 58, 18).build());
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("csv.export")), b -> exportCsv())
+				.bounds(x + 268, y, 54, 18).build());
+		addRenderableWidget(Button.builder(Component.literal(ClientUtil.t("csv.import")), b -> importCsv())
+				.bounds(x + 326, y, 54, 18).build());
 	}
-
 	private static Component doneToggleLabel() {
 		return Component.literal(ClientUtil.t(showDone ? "ui.hideDone" : "ui.showDone"));
 	}
@@ -116,9 +116,16 @@ public class ListScreen extends Screen {
 		statusUntil = System.currentTimeMillis() + 5000;
 	}
 
+	/** 标题可用宽度：跟随窗口宽度，小窗口下自动收窄（issue #42）。 */
+	private int titleWidth() {
+		int cx = width / 2;
+		int leftX = Math.max(6, cx - 184);
+		return Math.max(60, Math.min(TEXT_WIDTH, cx + 34 - leftX) - 64);
+	}
+
 	private RowData rowData(String text, String prefix, int prefixColor, String detail, String id,
 			boolean shared, boolean done, int visibility, int reservedWidth) {
-		List<String> lines = ClientUtil.wrap(font, text, Math.max(40, TEXT_WIDTH - reservedWidth));
+		List<String> lines = ClientUtil.wrap(font, text, Math.max(40, titleWidth() - reservedWidth));
 		if (lines.isEmpty()) {
 			lines = List.of("");
 		}
@@ -190,10 +197,11 @@ public class ListScreen extends Screen {
 			}
 			int color = row.done() ? 0xFF757575
 					: row.shared() ? (row.visibility() == 2 ? 0xFFFF80AB : 0xFF64B5F6) : 0xFFECEFF1;
-			graphics.drawString(font, row.prefix(), cx - 184, y + 2, row.prefixColor(), true);
+			int leftX = Math.max(6, cx - 184);
+			graphics.drawString(font, row.prefix(), leftX, y + 2, row.prefixColor(), true);
 			int prefixWidth = font.width(row.prefix());
 			for (int line = 0; line < row.lines().size(); line++) {
-				graphics.drawString(font, row.lines().get(line), cx - 184 + (line == 0 ? prefixWidth : 0),
+				graphics.drawString(font, row.lines().get(line), leftX + (line == 0 ? prefixWidth : 0),
 						y + 2 + line * LINE_HEIGHT, color, true);
 			}
 			if (row.detail() != null && !row.detail().isBlank()) {
