@@ -21,11 +21,14 @@ import java.util.List;
 
 /**
  * 待办列表，布局与 Fabric 版 {@code TaskListScreen} 对齐：
- * 深色遮罩、金色标题、每行 34px（前缀 / 标题换行 / 右侧进度）、右侧滚动条、底部快捷键提示与按钮。
+ * 深色遮罩、金色标题、行内 `[优先级] 标题（可换行）/ 右侧进度`、右侧滚动条、底部键位提示。
+ *
+ * <p>行高按标题换行数动态计算，长标题会完整显示（issue #38）。
  */
 public class ListScreen extends Screen {
 	private static final int LIST_TOP = 58;
-	private static final int ROW_HEIGHT = 34;
+	private static final int MIN_ROW_HEIGHT = 20;
+	private static final int LINE_HEIGHT = 11;
 	private static final int TEXT_WIDTH = 210;
 
 	private int scroll;
@@ -37,9 +40,9 @@ public class ListScreen extends Screen {
 		super(Component.literal(ClientUtil.t("list.title")));
 	}
 
-	/** 列表里的一行。 */
-	private record Row(int y, String prefix, int prefixColor, String text, String detail, String id,
-			boolean shared, boolean done, int visibility) {
+	/** 一行任务（已换行、未定位）。 */
+	private record RowData(List<String> lines, String prefix, int prefixColor, String detail, String id,
+			boolean shared, boolean done, int visibility, int height) {
 	}
 
 	@Override
@@ -113,92 +116,109 @@ public class ListScreen extends Screen {
 		statusUntil = System.currentTimeMillis() + 5000;
 	}
 
-	private List<Row> rows() {
-		List<Row> rows = new ArrayList<>();
-		int index = 0;
-		List<Task> active = ClientTasks.active();
-		for (Task task : active) {
-			int y = LIST_TOP + (index - scroll) * ROW_HEIGHT;
-			rows.add(new Row(y, "[" + Priority.byWeight(task.priority).label() + "] ",
-					0xFF000000 | Priority.byWeight(task.priority).color(), ClientTasks.title(task),
-					ClientTasks.progressText(minecraft, task), task.id, false, false, 0));
-			index++;
+	private RowData rowData(String text, String prefix, int prefixColor, String detail, String id,
+			boolean shared, boolean done, int visibility, int reservedWidth) {
+		List<String> lines = ClientUtil.wrap(font, text, Math.max(40, TEXT_WIDTH - reservedWidth));
+		if (lines.isEmpty()) {
+			lines = List.of("");
+		}
+		int height = Math.max(MIN_ROW_HEIGHT, lines.size() * LINE_HEIGHT + 6);
+		return new RowData(lines, prefix, prefixColor, detail, id, shared, done, visibility, height);
+	}
+
+	private List<RowData> rows() {
+		List<RowData> rows = new ArrayList<>();
+		for (Task task : ClientTasks.active()) {
+			rows.add(rowData(ClientTasks.title(task), "[" + Priority.byWeight(task.priority).label() + "] ",
+					0xFF000000 | Priority.byWeight(task.priority).color(),
+					ClientTasks.progressText(minecraft, task), task.id, false, false, 0, 64));
 		}
 		for (ClientShared.Entry entry : ClientShared.all()) {
 			if (!showDone && entry.done) {
 				continue;
 			}
-			int y = LIST_TOP + (index - scroll) * ROW_HEIGHT;
-			rows.add(new Row(y, "[" + Priority.byWeight(entry.task.priority).label() + "] ",
+			rows.add(rowData(entry.owner + " · " + ClientTasks.title(entry.task),
+					"[" + Priority.byWeight(entry.task.priority).label() + "] ",
 					0xFF000000 | Priority.byWeight(entry.task.priority).color(),
-					entry.owner + " · " + ClientTasks.title(entry.task), ClientTasks.progressText(minecraft, entry.task),
-					entry.id, true, entry.done, entry.visibility));
-			index++;
+					ClientTasks.progressText(minecraft, entry.task), entry.id, true, entry.done, entry.visibility, 64));
 		}
 		if (showDone) {
 			for (Task task : ClientTasks.completed()) {
-				int y = LIST_TOP + (index - scroll) * ROW_HEIGHT;
-				rows.add(new Row(y, ClientUtil.t("list.donePrefix"), 0xFF757575, ClientTasks.title(task),
-						ClientTasks.progressText(minecraft, task), task.id, false, true, 0));
-				index++;
+				rows.add(rowData(ClientTasks.title(task), ClientUtil.t("list.donePrefix"), 0xFF757575,
+						ClientTasks.progressText(minecraft, task), task.id, false, true, 0, 64));
 			}
 		}
 		return rows;
 	}
 
-	private int visibleRows() {
-		return Math.max(3, (height - LIST_TOP - 46) / ROW_HEIGHT);
+	/** 从 scroll 开始，能完整放下的行数。 */
+	private int visibleCount(List<RowData> rows) {
+		int y = LIST_TOP;
+		int count = 0;
+		for (int i = scroll; i < rows.size(); i++) {
+			int h = rows.get(i).height();
+			if (y + h > height - 46) {
+				break;
+			}
+			y += h;
+			count++;
+		}
+		return Math.max(1, count);
 	}
 
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-		// Fabric 版使用整屏深色遮罩，而不是原版模糊背景
+		// 与 Fabric 一致：整屏深色遮罩
 		graphics.fill(0, 0, width, height, 0xE0101014);
 		ClientUtil.centered(graphics, font, title.getString(), width / 2, 22, 0xFFFFD54F);
 
-		int total = rows().size();
-		String info = ClientUtil.t("list.range", total == 0 ? 0 : 1,
-				Math.min(total, visibleRows()), total) + ClientUtil.t("list.scrollHint");
+		List<RowData> rows = rows();
+		int visible = visibleCount(rows);
+		String info = ClientUtil.t("list.range", rows.isEmpty() ? 0 : scroll + 1,
+				Math.min(rows.size(), scroll + visible), rows.size()) + ClientUtil.t("list.scrollHint");
 		ClientUtil.centered(graphics, font, info, width / 2, 40, 0xFF9E9E9E);
 
-		List<Row> rows = rows();
 		if (rows.isEmpty()) {
 			ClientUtil.centered(graphics, font, ClientUtil.t("list.empty"), width / 2, LIST_TOP + 20, 0xFF9E9E9E);
 		}
 		int cx = width / 2;
-		for (Row row : rows) {
-			if (row.y() < LIST_TOP || row.y() + ROW_HEIGHT > height - 46) {
-				continue;
+		int y = LIST_TOP;
+		for (int i = scroll; i < rows.size(); i++) {
+			RowData row = rows.get(i);
+			if (y + row.height() > height - 46) {
+				break;
 			}
 			int color = row.done() ? 0xFF757575
 					: row.shared() ? (row.visibility() == 2 ? 0xFFFF80AB : 0xFF64B5F6) : 0xFFECEFF1;
-			graphics.drawString(font, row.prefix(), cx - 184, row.y() + 2, row.prefixColor(), true);
+			graphics.drawString(font, row.prefix(), cx - 184, y + 2, row.prefixColor(), true);
 			int prefixWidth = font.width(row.prefix());
-			List<String> lines = ClientUtil.wrap(font, row.text(), TEXT_WIDTH);
-			for (int i = 0; i < lines.size() && i < 2; i++) {
-				graphics.drawString(font, lines.get(i), cx - 184 + (i == 0 ? prefixWidth : 0), row.y() + 2 + i * 11,
-						color, true);
+			for (int line = 0; line < row.lines().size(); line++) {
+				graphics.drawString(font, row.lines().get(line), cx - 184 + (line == 0 ? prefixWidth : 0),
+						y + 2 + line * LINE_HEIGHT, color, true);
 			}
 			if (row.detail() != null && !row.detail().isBlank()) {
-				graphics.drawString(font, ClientUtil.clip(font, row.detail(), 90), cx + 40, row.y() + 2,
-						0xFF9FB3C8, true);
+				graphics.drawString(font, ClientUtil.clip(font, row.detail(), 90), cx + 40, y + 2, 0xFF9FB3C8, true);
 			}
 			if (!row.shared()) {
-				graphics.drawString(font, "[改]", cx + 140, row.y() + 2, 0xFF9AD9FF, true);
-				graphics.drawString(font, "[删]", cx + 170, row.y() + 2, 0xFFFF9E9E, true);
-			} else if (row.shared() && ClientShared.byId(row.id()) != null && ClientShared.byId(row.id()).mine) {
-				graphics.drawString(font, "[撤销]", cx + 150, row.y() + 2, 0xFFFF9E9E, true);
+				graphics.drawString(font, "[改]", cx + 140, y + 2, 0xFF9AD9FF, true);
+				graphics.drawString(font, "[删]", cx + 170, y + 2, 0xFFFF9E9E, true);
+			} else {
+				ClientShared.Entry entry = ClientShared.byId(row.id());
+				if (entry != null && entry.mine) {
+					graphics.drawString(font, "[撤销]", cx + 150, y + 2, 0xFFFF9E9E, true);
+				}
 			}
+			y += row.height();
 		}
 
 		// 滚动条
 		int barX = width - 6;
 		int barTop = LIST_TOP;
-		int barHeight = visibleRows() * ROW_HEIGHT - 4;
+		int barHeight = Math.max(20, height - 46 - LIST_TOP);
 		graphics.fill(barX, barTop, barX + 3, barTop + barHeight, 0x33FFFFFF);
-		if (total > visibleRows()) {
-			int thumb = Math.max(12, barHeight * visibleRows() / total);
-			int thumbTop = barTop + (barHeight - thumb) * scroll / Math.max(1, total - visibleRows());
+		if (rows.size() > visible) {
+			int thumb = Math.max(12, barHeight * visible / rows.size());
+			int thumbTop = barTop + (barHeight - thumb) * scroll / Math.max(1, rows.size() - visible);
 			graphics.fill(barX, thumbTop, barX + 3, thumbTop + thumb, 0xAAFFD54F);
 		}
 
@@ -208,27 +228,11 @@ public class ListScreen extends Screen {
 			graphics.drawString(font, status, 6, height - 12, 0xFF8BC34A, true);
 		} else {
 			graphics.drawString(font, ClientUtil.t("list.footer",
-					EtmClientKeys.quickAdd(), EtmClientKeys.list(), EtmClientKeys.config(), EtmClientKeys.toggleHud()),
+					com.easytaskmgr.client.EtmClient.KEY_QUICK_ADD.getTranslatedKeyMessage().getString(),
+					com.easytaskmgr.client.EtmClient.KEY_LIST.getTranslatedKeyMessage().getString(),
+					com.easytaskmgr.client.EtmClient.KEY_CONFIG.getTranslatedKeyMessage().getString(),
+					com.easytaskmgr.client.EtmClient.KEY_TOGGLE_HUD.getTranslatedKeyMessage().getString()),
 					6, height - 12, 0xFF78909C, true);
-		}
-	}
-
-	/** 快捷读取键位名称（避免 screens 包直接依赖 EtmClient 的内部字段顺序）。 */
-	private static final class EtmClientKeys {
-		static String quickAdd() {
-			return com.easytaskmgr.client.EtmClient.KEY_QUICK_ADD.getTranslatedKeyMessage().getString();
-		}
-
-		static String list() {
-			return com.easytaskmgr.client.EtmClient.KEY_LIST.getTranslatedKeyMessage().getString();
-		}
-
-		static String config() {
-			return com.easytaskmgr.client.EtmClient.KEY_CONFIG.getTranslatedKeyMessage().getString();
-		}
-
-		static String toggleHud() {
-			return com.easytaskmgr.client.EtmClient.KEY_TOGGLE_HUD.getTranslatedKeyMessage().getString();
 		}
 	}
 
@@ -237,41 +241,44 @@ public class ListScreen extends Screen {
 		if (super.mouseClicked(mouseX, mouseY, button)) {
 			return true;
 		}
+		List<RowData> rows = rows();
 		int cx = width / 2;
-		for (Row row : rows()) {
-			if (row.y() < LIST_TOP || row.y() + ROW_HEIGHT > height - 46) {
-				continue;
+		int y = LIST_TOP;
+		for (int i = scroll; i < rows.size(); i++) {
+			RowData row = rows.get(i);
+			if (y + row.height() > height - 46) {
+				break;
 			}
-			if (mouseY < row.y() || mouseY > row.y() + ROW_HEIGHT - 2) {
-				continue;
-			}
-			if (row.shared()) {
-				ClientShared.Entry entry = ClientShared.byId(row.id());
-				if (entry == null) {
+			if (mouseY >= y && mouseY <= y + row.height() - 2) {
+				if (row.shared()) {
+					ClientShared.Entry entry = ClientShared.byId(row.id());
+					if (entry == null) {
+						return true;
+					}
+					if (entry.mine && mouseX >= cx + 140) {
+						ClientShared.revoke(entry.id);
+					} else {
+						ClientShared.click(entry);
+					}
 					return true;
 				}
-				if (entry.mine && mouseX >= cx + 140) {
-					ClientShared.revoke(entry.id);
+				Task task = TaskStore.get().byId(row.id()).orElse(null);
+				if (task == null) {
+					return true;
+				}
+				if (mouseX >= cx + 135 && mouseX < cx + 165) {
+					minecraft.setScreen(new EditScreen(task));
+				} else if (mouseX >= cx + 165) {
+					ClientTasks.remove(task);
+				} else if (task.done) {
+					TaskStore.get().toggleDone(task);
+					TaskStore.get().save();
 				} else {
-					ClientShared.click(entry);
+					ClientTasks.complete(task);
 				}
 				return true;
 			}
-			Task task = TaskStore.get().byId(row.id()).orElse(null);
-			if (task == null) {
-				return true;
-			}
-			if (mouseX >= cx + 135 && mouseX < cx + 165) {
-				minecraft.setScreen(new EditScreen(task));
-			} else if (mouseX >= cx + 165) {
-				ClientTasks.remove(task);
-			} else if (task.done) {
-				TaskStore.get().toggleDone(task);
-				TaskStore.get().save();
-			} else {
-				ClientTasks.complete(task);
-			}
-			return true;
+			y += row.height();
 		}
 		return false;
 	}
@@ -279,7 +286,8 @@ public class ListScreen extends Screen {
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
 		int total = rows().size();
-		int maxScroll = Math.max(0, total - visibleRows());
+		int visible = visibleCount(rows());
+		int maxScroll = Math.max(0, total - visible);
 		scroll = Math.max(0, Math.min(maxScroll, scroll - (int) Math.round(scrollY)));
 		return true;
 	}
