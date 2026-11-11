@@ -33,3 +33,6 @@ gradle-build.log
 run-server/
 tools/mcp-tests/mods/
 tools/mcp-tests/out/
+# neoforge 解压 jar 时的临时产物
+/neoforge-1.21.1/META-INF/
+/neoforge-1.21.1/build-release.log
