@@ -8,38 +8,37 @@ import com.easytaskmgr.task.TaskType;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.LayeredDraw;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 右上角待办 HUD（NeoForge 1.21.1 用 {@code LayeredDraw.Layer} 挂载）。
+ * 右上角待办 HUD，样式与 Fabric 版 {@code TaskHud} 一致。
  *
- * <p>渲染顺序：标题 → 个人任务（数量受 {@code hudCompactLimit} 限制）→ 共享任务；
- * 每条任务按优先级染色，收集 / 坐标任务下面追加一行进度说明。
- *
- * <p>交互模式（按 V 进入）下记录每行的屏幕矩形，点击时用 {@link #click} 命中完成任务。
+ * <p>深色面板 + 1px 边框、金色标题、按优先级着色的行、共享任务蓝/粉、详情行灰蓝；
+ * 长文本按面板宽度换行（不再截断），行数超出屏幕时收缩并提示还有多少条。
  */
-public final class Hud implements LayeredDraw.Layer {
-	private static final int PADDING = 4;
-	private static final int LINE_HEIGHT = 10;
+public final class Hud implements net.minecraft.client.gui.LayeredDraw.Layer {
+	private static final int BACKGROUND = 0xB412171C;
+	private static final int BORDER = 0x66FFFFFF;
+	private static final int BORDER_INTERACTIVE = 0xAAFFD54F;
+	private static final int HEADER_COLOR = 0xFFFFD54F;
+	private static final int DETAIL_COLOR = 0xFFB0BEC5;
+	private static final int SHARED_COLOR = 0xFF64B5F6;
+	private static final int SPECIAL_COLOR = 0xFFFF80AB;
+	private static final int TEXT_COLOR = 0xFFECEFF1;
 
-	/** 顶部闪烁计时。 */
+	private static final int PADDING_X = 6;
+	private static final int PADDING_TOP = 4;
+
 	private static int flashTicks;
-
 	private static final List<Hit> HITS = new ArrayList<>();
 
-	/** 一行可点击区域。 */
 	private record Hit(int x0, int y0, int x1, int y1, String taskId, String sharedId) {
 	}
 
-	/** 待排布的任务行（尚未拿到屏幕坐标）。 */
-	private record Row(String taskId, String sharedId) {
-	}
-
-	/** 一行要绘制的内容。 */
-	private record Line(String text, int color) {
+	/** 一行文本：prefix 用 prefixColor，正文用 color。 */
+	private record Row(String prefix, int prefixColor, String text, int color, String taskId, String sharedId) {
 	}
 
 	public static void flash() {
@@ -49,7 +48,6 @@ public final class Hud implements LayeredDraw.Layer {
 	@Override
 	public void render(GuiGraphics graphics, DeltaTracker delta) {
 		Minecraft mc = Minecraft.getInstance();
-		// 先清掉旧的命中区：HUD 隐藏时不能留下可点区域（review #19）
 		HITS.clear();
 		if (mc.player == null || mc.level == null || ModConfig.get().hudHidden) {
 			return;
@@ -58,84 +56,114 @@ public final class Hud implements LayeredDraw.Layer {
 			flashTicks--;
 		}
 		ModConfig cfg = ModConfig.get();
+		var font = mc.font;
+		int screenWidth = mc.getWindow().getGuiScaledWidth();
+		int screenHeight = mc.getWindow().getGuiScaledHeight();
+
+		// 与 Fabric 一致：面板宽度固定为配置值（超出屏幕时收敛），文本在内部换行
+		int panelWidth = Math.min(cfg.hudMaxWidth + 14, screenWidth - 2);
+		int textWidth = panelWidth - PADDING_X * 2;
+		int lineHeight = font.lineHeight + 1;
+		int headerHeight = font.lineHeight + 6;
 
 		List<Task> personal = ClientTasks.active();
 		List<ClientShared.Entry> shared = cfg.showTeammates ? ClientShared.all() : List.of();
-		int total = personal.size() + shared.size();
 		int limit = Math.max(1, cfg.hudCompactLimit);
 
-		List<Line> lines = new ArrayList<>();
 		List<Row> rows = new ArrayList<>();
-		int titleColor = flashTicks > 0 ? 0xFFFFEB3B : 0xFFFFFFFF;
-		lines.add(new Line(ClientUtil.t("hud.title", total), titleColor));
-
 		for (int i = 0; i < personal.size() && i < limit; i++) {
 			Task task = personal.get(i);
-			int color = 0xFF000000 | Priority.byWeight(task.priority).color();
-			lines.add(new Line((i + 1) + ". " + ClientTasks.priorityTag(task) + " " + ClientTasks.title(task), color));
-			rows.add(new Row(task.id, null));
-			String detail = detail(mc, task);
+			String prefix = "[" + Priority.byWeight(task.priority).label() + "] ";
+			addWrapped(rows, font, prefix, 0xFF000000 | Priority.byWeight(task.priority).color(),
+					ClientTasks.title(task), TEXT_COLOR, task.id, null, textWidth);
+			String detail = task.type == TaskType.COORDINATE ? coordinateDetail(mc, task)
+					: ClientTasks.progressText(mc, task);
 			if (!detail.isBlank()) {
-				lines.add(new Line("   " + detail, 0xFFB0B0B0));
+				addWrapped(rows, font, "  ", DETAIL_COLOR, detail, DETAIL_COLOR, null, null, textWidth);
 			}
+		}
+		if (personal.size() > limit) {
+			rows.add(new Row("", 0, "  " + ClientUtil.t("hud.more", personal.size() - limit), DETAIL_COLOR, null, null));
 		}
 		for (ClientShared.Entry entry : shared) {
-			String line = "[" + Priority.byWeight(entry.task.priority).label() + "] " + entry.owner + " · "
-					+ ClientTasks.title(entry.task) + " " + stateText(entry);
-			lines.add(new Line(line.trim(), 0xFF7FB8FF));
-			rows.add(new Row(null, entry.id));
-			String detail = detail(mc, entry);
+			int color = entry.visibility == 2 ? SPECIAL_COLOR : SHARED_COLOR;
+			String state = stateText(entry);
+			String text = entry.owner + " · " + ClientTasks.title(entry.task) + (state.isBlank() ? "" : " " + state);
+			addWrapped(rows, font, "[" + Priority.byWeight(entry.task.priority).label() + "] ",
+					0xFF000000 | Priority.byWeight(entry.task.priority).color(), text, color, null, entry.id, textWidth);
+			String detail = entry.mode == SharedTasks.MODE_COMBINED
+					? ClientUtil.itemName(entry.task.target) + "  " + entry.sumCount + "/" + Math.max(1, entry.targetCount)
+					: ClientTasks.progressText(mc, entry.task);
 			if (!detail.isBlank()) {
-				lines.add(new Line("   " + detail, 0xFFB0B0B0));
+				addWrapped(rows, font, "  ", DETAIL_COLOR, detail, DETAIL_COLOR, null, null, textWidth);
 			}
 		}
-
-		int maxWidth = 0;
-		for (Line line : lines) {
-			maxWidth = Math.max(maxWidth, mc.font.width(line.text()));
-		}
-		int width = Math.min(cfg.hudMaxWidth, maxWidth) + PADDING * 2;
-		int height = lines.size() * LINE_HEIGHT + PADDING * 2;
-		int x = (int) (mc.getWindow().getGuiScaledWidth() * cfg.hudXPercent / 100.0) - width;
-		int y = (int) (mc.getWindow().getGuiScaledHeight() * cfg.hudYPercent / 100.0);
-
-		if (cfg.hudBackground) {
-			graphics.fill(x, y, x + width, y + height, 0x66000000);
-		}
 		if (cfg.hudInteractive) {
-			graphics.fill(x, y, x + width, y + 1, 0xFFFFD54F);
+			String key = EtmClient.KEY_INTERACT.getTranslatedKeyMessage().getString();
+			rows.add(new Row("", 0, ClientUtil.t("hud.hint", key), HEADER_COLOR, null, null));
 		}
 
-		int lineY = y + PADDING;
-		for (Line line : lines) {
-			graphics.drawString(mc.font, ClientUtil.clip(mc.font, line.text(), width - PADDING * 2), x + PADDING,
-					lineY, line.color(), true);
-			lineY += LINE_HEIGHT;
+		int right = Math.min(screenWidth - 2, Math.max(panelWidth + 4, (int) (screenWidth * (cfg.hudXPercent / 100.0))));
+		int left = Math.max(2, right - panelWidth);
+		int top = Math.max(2, Math.min(screenHeight - 10, (int) (screenHeight * (cfg.hudYPercent / 100.0))));
+
+		// 超出屏幕高度时缩减行数，避免画到屏幕外或产生点不到的命中区
+		int availableRows = Math.max(1, (screenHeight - top - headerHeight - 5 - 2) / lineHeight);
+		if (rows.size() > availableRows) {
+			int hidden = rows.size() - availableRows + 1;
+			rows = new ArrayList<>(rows.subList(0, availableRows - 1));
+			rows.add(new Row("", 0, "  " + ClientUtil.t("hud.more", hidden), DETAIL_COLOR, null, null));
 		}
 
-		// 命中区域：标题占一行，任务行从第二行开始（review #20）
-		int rowY = y + PADDING + LINE_HEIGHT;
+		int bottom = Math.min(screenHeight - 2, top + headerHeight + rows.size() * lineHeight + 5);
+		if (cfg.hudBackground) {
+			graphics.fill(left, top, right, bottom, BACKGROUND);
+		}
+		int border = cfg.hudInteractive ? BORDER_INTERACTIVE : BORDER;
+		graphics.fill(left, top, right, top + 1, border);
+		graphics.fill(left, bottom - 1, right, bottom, border);
+		graphics.fill(left, top, left + 1, bottom, border);
+		graphics.fill(right - 1, top, right, bottom, border);
+
+		String header = ClientUtil.t("hud.title", personal.size() + shared.size());
+		int headerColor = flashTicks > 0 ? 0xFFFFFFFF : HEADER_COLOR;
+		graphics.drawString(font, ClientUtil.clip(font, header, textWidth), left + PADDING_X, top + PADDING_TOP,
+				headerColor, true);
+
+		int y = top + headerHeight;
 		for (Row row : rows) {
-			String detail = row.taskId() != null
-					? personal.stream().filter(t -> t.id.equals(row.taskId())).findFirst().map(t -> detail(mc, t)).orElse("")
-					: java.util.Optional.ofNullable(ClientShared.byId(row.sharedId())).map(e -> detail(mc, e)).orElse("");
-			HITS.add(new Hit(x, rowY, x + width, rowY + LINE_HEIGHT, row.taskId(), row.sharedId()));
-			rowY += LINE_HEIGHT * (detail.isBlank() ? 1 : 2);
+			int x = left + PADDING_X;
+			if (!row.prefix().isEmpty()) {
+				if (y + lineHeight <= bottom - 1) {
+					graphics.drawString(font, row.prefix(), x, y, row.prefixColor(), true);
+				}
+				x += font.width(row.prefix());
+			}
+			// wrap() 已按宽度换行，这里不再裁剪，避免把超宽字符裁掉
+			graphics.drawString(font, row.text(), x, y, row.color(), true);
+			if (cfg.hudInteractive && y + lineHeight <= bottom - 1) {
+				if (row.taskId() != null) {
+					HITS.add(new Hit(left, y - 1, right, y + lineHeight, row.taskId(), null));
+				} else if (row.sharedId() != null) {
+					HITS.add(new Hit(left, y - 1, right, y + lineHeight, null, row.sharedId()));
+				}
+			}
+			y += lineHeight;
 		}
 	}
 
-	private static String detail(Minecraft mc, Task task) {
-		if (task.type == TaskType.COORDINATE) {
-			return coordinateDetail(mc, task);
+	/** 长文本按宽度换行；只有第一行带 prefix / 点击目标。 */
+	private static void addWrapped(List<Row> rows, net.minecraft.client.gui.Font font, String prefix, int prefixColor,
+			String text, int color, String taskId, String sharedId, int width) {
+		List<String> lines = ClientUtil.wrap(font, text, Math.max(40, width - font.width(prefix)));
+		if (lines.isEmpty()) {
+			rows.add(new Row(prefix, prefixColor, "", color, taskId, sharedId));
+			return;
 		}
-		return ClientTasks.progressText(mc, task);
-	}
-
-	private static String detail(Minecraft mc, ClientShared.Entry entry) {
-		if (entry.mode == SharedTasks.MODE_COMBINED) {
-			return ClientUtil.itemName(entry.task.target) + " " + entry.sumCount + "/" + entry.targetCount;
+		for (int i = 0; i < lines.size(); i++) {
+			rows.add(new Row(i == 0 ? prefix : "", i == 0 ? prefixColor : color, lines.get(i), color,
+					i == 0 ? taskId : null, i == 0 ? sharedId : null));
 		}
-		return ClientTasks.progressText(mc, entry.task);
 	}
 
 	private static String coordinateDetail(Minecraft mc, Task task) {
@@ -173,11 +201,6 @@ public final class Hud implements LayeredDraw.Layer {
 		return "";
 	}
 
-	/**
-	 * 处理 HUD 交互模式的点击。
-	 *
-	 * @return true 表示点击被 HUD 消费
-	 */
 	public static boolean click(double mouseX, double mouseY) {
 		for (Hit hit : HITS) {
 			if (mouseX >= hit.x0() && mouseX <= hit.x1() && mouseY >= hit.y0() && mouseY <= hit.y1()) {

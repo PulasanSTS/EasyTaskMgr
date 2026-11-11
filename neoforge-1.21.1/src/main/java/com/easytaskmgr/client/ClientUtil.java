@@ -151,6 +151,12 @@ public final class ClientUtil {
 		return lines;
 	}
 
+	/** 居中绘制带阴影的文本（原生 drawCenteredString 不带阴影）。 */
+	public static void centered(net.minecraft.client.gui.GuiGraphics graphics,
+			net.minecraft.client.gui.Font font, String text, int centerX, int y, int color) {
+		graphics.drawString(font, text, centerX - font.width(text) / 2, y, color, true);
+	}
+
 	/** 超长文本末尾截断。 */
 	public static String clip(Font font, String text, int maxWidth) {
 		if (font.width(text) <= maxWidth) {

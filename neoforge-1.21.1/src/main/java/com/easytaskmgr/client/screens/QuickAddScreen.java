@@ -55,8 +55,10 @@ public class QuickAddScreen extends Screen {
 
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-		renderBackground(graphics, mouseX, mouseY, partialTick);
-		graphics.drawCenteredString(font, title, width / 2, height / 2 - 55, 0xFFFFFFFF);
+		// 与 Fabric 一致：深色遮罩，而不是原版模糊背景
+		graphics.fill(0, 0, width, height, 0x99000000);
+		ClientUtil.centered(graphics, font, title.getString(), width / 2, height / 2 - 78, 0xFFFFD54F);
+		ClientUtil.centered(graphics, font, ClientUtil.t("quick.hint"), width / 2, height / 2 - 64, 0xFF9E9E9E);
 		super.render(graphics, mouseX, mouseY, partialTick);
 	}
 
