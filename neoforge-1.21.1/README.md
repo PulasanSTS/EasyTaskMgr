@@ -21,7 +21,7 @@ gradlew.bat runServer
 gradlew.bat runClient
 ```
 
-产物：`build/libs/easytaskmgr-neoforge-1.0.1.jar`
+产物：`build/libs/easytaskmgr-neoforge-1.0.1-neoforge-alpha.1.jar`（首个 alpha 版本）
 
 ## 当前状态
 
@@ -143,3 +143,6 @@ export JAVA_TOOL_OPTIONS="-Djava.library.path=\"$dir\" -Dorg.lwjgl.librarypath=\
   - 编辑界面的按钮文字被宽度截断（`Remind me when I joi…`）、`Completion: ?` 已在本轮改为默认「任一（含发布者）」；
   - 编辑界面未按类型隐藏无关输入框；
   - 列表缺「显示已完成」开关。
+## 版本说明
+
+- **1.0.1-neoforge-alpha.1**：首个 NeoForge 1.21.1 alpha 构建，功能与 Fabric 1.0.1 对齐（服务端已实测，客户端界面仍在小范围打磨）。
