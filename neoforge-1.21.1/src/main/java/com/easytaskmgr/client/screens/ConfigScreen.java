@@ -117,7 +117,8 @@ public class ConfigScreen extends Screen {
 
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-		graphics.fill(0, 0, width, height, 0xC0000000);
+		// 背景与控件先画，自定义文字最后画，避免被 renderBackground 的模糊背景盖住（issue #39）
+		super.render(graphics, mouseX, mouseY, partialTick);
 		graphics.drawString(font, ClientUtil.t("cfg.title"), X0, 12, 0xFFFFD54F, true);
 
 		ModConfig cfg = ModConfig.get();
@@ -146,8 +147,6 @@ public class ConfigScreen extends Screen {
 		graphics.fill(px, py, px + PREVIEW_W, py + 1, 0x66FFFFFF);
 		graphics.drawString(font, ClientUtil.t("hud.title", ClientTasks.active().size()), px + 6, py + 4,
 				0xFFFFD54F, true);
-
-		super.render(graphics, mouseX, mouseY, partialTick);
 	}
 
 	private void row(GuiGraphics graphics, String label, String value, int y) {
@@ -198,4 +197,9 @@ public class ConfigScreen extends Screen {
 	public boolean isPauseScreen() {
 		return false;
 	}
+	@Override
+	public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+		graphics.fill(0, 0, width, height, 0xC0000000);
+	}
+
 }

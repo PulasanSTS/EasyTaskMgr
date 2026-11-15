@@ -477,8 +477,13 @@ public class EditScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+	public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
 		graphics.fill(0, 0, width, height, 0xE0101014);
+	}
+	@Override
+	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+		// 背景与控件先画，自定义文字最后画，避免被 renderBackground 的模糊背景盖住（issue #39）
+		super.render(graphics, mouseX, mouseY, partialTick);
 		ClientUtil.centered(graphics, font, title.getString(), width / 2, Math.max(2, row(14)), 0xFFFFD54F);
 
 		int contentLabelY = row(30);
@@ -488,9 +493,6 @@ public class EditScreen extends Screen {
 		if (!shareable()) {
 			graphics.drawString(font, ClientUtil.t("edit.noShare"), x0, row(160), 0xFF9E9E9E, true);
 		}
-
-		super.render(graphics, mouseX, mouseY, partialTick);
-
 		refreshSuggestions();
 		if (!suggestions.isEmpty()) {
 			int[] box = suggestionBox();
