@@ -120,7 +120,7 @@ public class ListScreen extends Screen {
 	private int titleWidth() {
 		int cx = width / 2;
 		int leftX = Math.max(6, cx - 184);
-		return Math.max(60, Math.min(TEXT_WIDTH, cx + 34 - leftX) - 64);
+		return Math.max(80, Math.min(TEXT_WIDTH, cx + 34 - leftX));
 	}
 
 	private RowData rowData(String text, String prefix, int prefixColor, String detail, String id,
