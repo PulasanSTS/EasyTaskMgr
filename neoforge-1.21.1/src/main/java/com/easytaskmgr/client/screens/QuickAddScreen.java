@@ -55,11 +55,11 @@ public class QuickAddScreen extends Screen {
 
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+		// 背景与控件先画，自定义文字最后画，避免被 renderBackground 的模糊背景盖住（issue #39）
+		super.render(graphics, mouseX, mouseY, partialTick);
 		// 与 Fabric 一致：深色遮罩，而不是原版模糊背景
-		graphics.fill(0, 0, width, height, 0x99000000);
 		ClientUtil.centered(graphics, font, title.getString(), width / 2, height / 2 - 78, 0xFFFFD54F);
 		ClientUtil.centered(graphics, font, ClientUtil.t("quick.hint"), width / 2, height / 2 - 64, 0xFF9E9E9E);
-		super.render(graphics, mouseX, mouseY, partialTick);
 	}
 
 	@Override
@@ -75,4 +75,9 @@ public class QuickAddScreen extends Screen {
 	public boolean isPauseScreen() {
 		return false;
 	}
+	@Override
+	public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+		graphics.fill(0, 0, width, height, 0x99000000);
+	}
+
 }

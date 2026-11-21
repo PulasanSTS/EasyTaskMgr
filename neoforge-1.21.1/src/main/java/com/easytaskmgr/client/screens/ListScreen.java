@@ -175,8 +175,9 @@ public class ListScreen extends Screen {
 
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+		// 背景与控件先画，自定义文字最后画，避免被 renderBackground 的模糊背景盖住（issue #39）
+		super.render(graphics, mouseX, mouseY, partialTick);
 		// 与 Fabric 一致：整屏深色遮罩
-		graphics.fill(0, 0, width, height, 0xE0101014);
 		ClientUtil.centered(graphics, font, title.getString(), width / 2, 22, 0xFFFFD54F);
 
 		List<RowData> rows = rows();
@@ -229,9 +230,6 @@ public class ListScreen extends Screen {
 			int thumbTop = barTop + (barHeight - thumb) * scroll / Math.max(1, rows.size() - visible);
 			graphics.fill(barX, thumbTop, barX + 3, thumbTop + thumb, 0xAAFFD54F);
 		}
-
-		super.render(graphics, mouseX, mouseY, partialTick);
-
 		if (!status.isBlank() && System.currentTimeMillis() < statusUntil) {
 			graphics.drawString(font, status, 6, height - 14, 0xFF8BC34A, true);
 		} else {
@@ -304,4 +302,9 @@ public class ListScreen extends Screen {
 	public boolean isPauseScreen() {
 		return false;
 	}
+	@Override
+	public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+		graphics.fill(0, 0, width, height, 0xE0101014);
+	}
+
 }
